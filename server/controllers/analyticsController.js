@@ -207,13 +207,84 @@ export const getPerformanceAnalytics = catchAsync(async (req, res) => {
   });
 });
 
-export const getStudentAnalytics = catchAsync(async (req, res) => {
-  const subjectMarks = await getSubjectWiseMarks(req.params.studentId);
-  const attendance = await Attendance.find({ student: req.params.studentId })
-    .sort('-date')
-    .limit(30);
+const getStudentAttendanceTrends = async (studentId, months = 6) => {
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - months);
 
-  res.json({ success: true, data: { subjectMarks, attendance } });
+  return Attendance.aggregate([
+    { $match: { student: studentId, date: { $gte: startDate } } },
+    {
+      $group: {
+        _id: { year: { $year: '$date' }, month: { $month: '$date' } },
+        present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+        absent: { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
+        late: { $sum: { $cond: [{ $eq: ['$status', 'late'] }, 1, 0] } },
+        leave: { $sum: { $cond: [{ $eq: ['$status', 'leave'] }, 1, 0] } },
+      },
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1 } },
+  ]);
+};
+
+export const getMyAnalytics = catchAsync(async (req, res) => {
+  if (req.user.role !== 'student') {
+    throw new AppError('This endpoint is for students only', 403);
+  }
+
+  const student = await Student.findOne({ user: req.user._id })
+    .populate('user', 'name email profileImage')
+    .populate('class', 'name section academicYear');
+
+  if (!student) throw new AppError('Student profile not found', 404);
+
+  const [attendance, results, subjectMarks, attendanceTrends] = await Promise.all([
+    Attendance.find({ student: student._id }).sort('-date').limit(30),
+    Result.find({ student: student._id })
+      .populate('subject', 'name code')
+      .sort('-createdAt'),
+    getSubjectWiseMarks(student._id),
+    getStudentAttendanceTrends(student._id),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      student,
+      attendance,
+      results,
+      subjectMarks,
+      attendanceTrends,
+      academicTimeline: student.academicTimeline,
+    },
+  });
+});
+
+export const getStudentAnalytics = catchAsync(async (req, res) => {
+  const student = await Student.findById(req.params.studentId);
+  if (!student) throw new AppError('Student not found', 404);
+
+  if (req.user.role === 'student') {
+    const own = await Student.findOne({ user: req.user._id });
+    if (!own || own._id.toString() !== student._id.toString()) {
+      throw new AppError('You can only view your own analytics', 403);
+    }
+  } else if (req.user.role === 'teacher') {
+    const scope = await getTeacherScope(req.user._id);
+    if (!scope.classIds.some((id) => id.toString() === student.class.toString())) {
+      throw new AppError('You do not have permission', 403);
+    }
+  }
+
+  const [subjectMarks, attendance, attendanceTrends] = await Promise.all([
+    getSubjectWiseMarks(student._id),
+    Attendance.find({ student: student._id }).sort('-date').limit(30),
+    getStudentAttendanceTrends(student._id),
+  ]);
+
+  res.json({
+    success: true,
+    data: { subjectMarks, attendance, attendanceTrends },
+  });
 });
 
 export const getGrowthAnalytics = catchAsync(async (req, res) => {

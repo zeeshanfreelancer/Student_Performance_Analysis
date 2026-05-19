@@ -65,7 +65,9 @@ export const getChildProfile = catchAsync(async (req, res) => {
 
   const [attendance, results, assignments, subjectMarks] = await Promise.all([
     Attendance.find({ student: student._id }).sort('-date').limit(30),
-    Result.find({ student: student._id }).populate('subject', 'name'),
+    Result.find({ student: student._id })
+      .populate('subject', 'name code')
+      .sort('-createdAt'),
     Assignment.find({ class: student.class }),
     getSubjectWiseMarks(student._id),
   ]);

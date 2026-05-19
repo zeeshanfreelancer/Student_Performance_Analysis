@@ -16,7 +16,9 @@ import QuizzesPage from '../pages/shared/QuizzesPage';
 import TakeQuizPage from '../pages/student/TakeQuizPage';
 import UsersPage from '../pages/admin/UsersPage';
 import ParentDashboard from '../pages/parent/ParentDashboard';
+import ParentGradesPage from '../pages/parent/ParentGradesPage';
 import StudentDashboard from '../pages/student/StudentDashboard';
+import StudentAnalyticsPage from '../pages/student/StudentAnalyticsPage';
 import TeacherDashboard from '../pages/teacher/TeacherDashboard';
 import { getDashboardPath } from '../utils/constants';
 
@@ -61,7 +63,7 @@ const studentRoutes = [
   { path: 'assignments', element: <AssignmentsPage /> },
   { path: 'quizzes', element: <QuizzesPage /> },
   { path: 'quizzes/:quizId', element: <TakeQuizPage /> },
-  { path: 'analytics', element: <AnalyticsPage /> },
+  { path: 'analytics', element: <StudentAnalyticsPage /> },
   { path: 'chat', element: <ChatPage /> },
   { path: 'settings', element: <ProfilePage /> },
 ];
@@ -70,7 +72,7 @@ const parentRoutes = [
   { path: 'dashboard', element: <ParentDashboard /> },
   { path: 'children', element: <ParentDashboard /> },
   { path: 'attendance', element: <AttendancePage /> },
-  { path: 'grades', element: <AnalyticsPage /> },
+  { path: 'grades', element: <ParentGradesPage /> },
   { path: 'chat', element: <ChatPage /> },
   { path: 'profile', element: <ProfilePage /> },
   { path: 'settings', element: <ProfilePage /> },

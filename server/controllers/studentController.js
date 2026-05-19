@@ -161,6 +161,13 @@ export const getStudentProfile = catchAsync(async (req, res) => {
 
   if (!student) throw new AppError('Student not found', 404);
 
+  if (req.user.role === 'student') {
+    const own = await Student.findOne({ user: req.user._id });
+    if (!own || own._id.toString() !== student._id.toString()) {
+      throw new AppError('You can only view your own profile', 403);
+    }
+  }
+
   const [attendance, results, assignments, subjectMarks] = await Promise.all([
     Attendance.find({ student: student._id }).sort('-date').limit(30),
     Result.find({ student: student._id }).populate('subject', 'name code').sort('-createdAt'),
