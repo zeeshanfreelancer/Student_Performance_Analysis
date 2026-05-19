@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiSearch, FiDownload, FiEdit, FiTrash2, FiEye } from 'react-icons/fi';
+import { useSelector } from 'react-redux';
+import { FiPlus, FiSearch, FiDownload, FiEdit, FiTrash2, FiEye, FiUserPlus } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import DataTable from '../../components/ui/DataTable';
 import Pagination from '../../components/ui/Pagination';
+import CreateStudentModal from '../../components/accounts/CreateStudentModal';
+import CreateAccountModal from '../../components/accounts/CreateAccountModal';
 import { studentService } from '../../services/studentService';
 import { useDebounce } from '../../hooks/useDebounce';
 import { downloadBlob } from '../../utils/helpers';
 
 export default function StudentsPage() {
+  const { user } = useSelector((state) => state.auth);
+  const basePath = `/${user?.role || 'admin'}`;
+  const canCreateParent = user?.role === 'admin' || user?.role === 'teacher';
+
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({});
+  const [studentModalOpen, setStudentModalOpen] = useState(false);
+  const [parentModalOpen, setParentModalOpen] = useState(false);
   const debouncedSearch = useDebounce(search);
   const navigate = useNavigate();
 
@@ -78,13 +87,24 @@ export default function StudentsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">Students</h2>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleExport('excel')} className="btn-secondary">
-            <FiDownload className="mr-2" /> Excel
+          {user?.role === 'admin' && (
+            <>
+              <button type="button" onClick={() => handleExport('excel')} className="btn-secondary">
+                <FiDownload className="mr-2 inline" /> Excel
+              </button>
+              <button type="button" onClick={() => handleExport('csv')} className="btn-secondary">
+                <FiDownload className="mr-2 inline" /> CSV
+              </button>
+            </>
+          )}
+          {canCreateParent && (
+            <button type="button" onClick={() => setParentModalOpen(true)} className="btn-secondary">
+              <FiUserPlus className="mr-2 inline" /> Add Parent
+            </button>
+          )}
+          <button type="button" onClick={() => setStudentModalOpen(true)} className="btn-primary">
+            <FiPlus className="mr-2 inline" /> Add Student
           </button>
-          <button onClick={() => handleExport('csv')} className="btn-secondary">
-            <FiDownload className="mr-2" /> CSV
-          </button>
-          <button className="btn-primary"><FiPlus className="mr-2" /> Add Student</button>
         </div>
       </div>
 
@@ -120,17 +140,29 @@ export default function StudentsPage() {
           data={students}
           loading={loading}
           emptyTitle="No students found"
-          onRowClick={(row) => navigate(`/admin/students/${row._id}`)}
-          actions={(row) => (
+          onRowClick={user?.role === 'admin' ? (row) => navigate(`${basePath}/students/${row._id}`) : undefined}
+          actions={user?.role === 'admin' ? (row) => (
             <div className="flex justify-end gap-2">
-              <button onClick={(e) => { e.stopPropagation(); navigate(`/admin/students/${row._id}`); }} className="p-1 hover:text-primary-600"><FiEye /></button>
-              <button className="p-1 hover:text-primary-600"><FiEdit /></button>
-              <button onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }} className="p-1 hover:text-red-600"><FiTrash2 /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`${basePath}/students/${row._id}`); }} className="p-1 hover:text-primary-600"><FiEye /></button>
+              <button type="button" className="p-1 hover:text-primary-600"><FiEdit /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }} className="p-1 hover:text-red-600"><FiTrash2 /></button>
             </div>
-          )}
+          ) : undefined}
         />
         <Pagination page={page} total={total} onPageChange={setPage} />
       </div>
+
+      <CreateStudentModal
+        open={studentModalOpen}
+        onClose={() => setStudentModalOpen(false)}
+        onSuccess={fetchStudents}
+      />
+      <CreateAccountModal
+        open={parentModalOpen}
+        onClose={() => setParentModalOpen(false)}
+        defaultRole="parent"
+        onSuccess={fetchStudents}
+      />
     </div>
   );
 }

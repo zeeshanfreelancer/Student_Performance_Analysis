@@ -11,6 +11,8 @@ import chatRoutes from './chatRoutes.js';
 import reportRoutes from './reportRoutes.js';
 import fileRoutes from './fileRoutes.js';
 import exportRoutes from './exportRoutes.js';
+import accountRoutes from './accountRoutes.js';
+import classRoutes from './classRoutes.js';
 
 const router = Router();
 
@@ -26,6 +28,8 @@ router.use('/chat', chatRoutes);
 router.use('/reports', reportRoutes);
 router.use('/files', fileRoutes);
 router.use('/export', exportRoutes);
+router.use('/accounts', accountRoutes);
+router.use('/classes', classRoutes);
 
 router.get('/health', (req, res) => {
   res.json({ success: true, message: 'School ERP API is running' });

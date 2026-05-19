@@ -1,5 +1,5 @@
 import { useSelector, useDispatch } from 'react-redux';
-import { login, register, logout, fetchMe, clearError } from '../redux/slices/authSlice';
+import { login, logout, fetchMe, clearError } from '../redux/slices/authSlice';
 
 export const useAuth = () => {
   const dispatch = useDispatch();
@@ -11,7 +11,6 @@ export const useAuth = () => {
     loading,
     error,
     login: (data) => dispatch(login(data)),
-    register: (data) => dispatch(register(data)),
     logout: () => dispatch(logout()),
     fetchMe: () => dispatch(fetchMe()),
     clearError: () => dispatch(clearError()),

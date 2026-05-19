@@ -4,14 +4,12 @@ import { protect } from '../middleware/authMiddleware.js';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { validate } from '../middleware/validateMiddleware.js';
 import {
-  registerValidation,
   loginValidation,
   changePasswordValidation,
 } from '../validations/authValidation.js';
 
 const router = Router();
 
-router.post('/register', registerValidation, validate, authController.register);
 router.post('/login', loginValidation, validate, authController.login);
 router.post('/refresh-token', authController.refreshToken);
 router.post('/logout', protect, authController.logout);

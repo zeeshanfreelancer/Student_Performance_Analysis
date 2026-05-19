@@ -1,6 +1,7 @@
 import Student from '../models/Student.js';
 import User from '../models/User.js';
 import Parent from '../models/Parent.js';
+import Teacher from '../models/Teacher.js';
 import Result from '../models/Result.js';
 import Attendance from '../models/Attendance.js';
 import Assignment from '../models/Assignment.js';
@@ -12,11 +13,24 @@ import { logActivity } from '../services/activityLogService.js';
 import { getSubjectWiseMarks } from '../services/analyticsService.js';
 
 export const createStudent = catchAsync(async (req, res) => {
-  const {
+  let {
     name, email, password, rollNo, class: classId, department, semester,
     fatherName, motherName, parentId, dob, address, bloodGroup, phone, gender,
     emergencyContact,
   } = req.body;
+
+  if (req.user.role === 'teacher') {
+    const teacher = await Teacher.findOne({ user: req.user._id });
+    if (!teacher) throw new AppError('Teacher profile not found', 403);
+    const teacherClassIds = (teacher.classes || []).map((id) => id.toString());
+    if (!teacherClassIds.length) {
+      throw new AppError('No class assigned to your teacher profile', 403);
+    }
+    if (classId && !teacherClassIds.includes(classId.toString())) {
+      throw new AppError('You can only add students to your assigned classes', 403);
+    }
+    if (!classId) classId = teacher.classes[0];
+  }
 
   const user = await User.create({
     name, email, password: password || 'Student@123', role: 'student', phone, gender,

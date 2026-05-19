@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -59,9 +59,8 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
-        Don&apos;t have an account?{' '}
-        <Link to="/register" className="font-medium text-primary-600 hover:underline">Register</Link>
+      <p className="mt-6 text-center text-xs text-gray-500">
+        Accounts are created by your school administrator.
       </p>
     </div>
   );

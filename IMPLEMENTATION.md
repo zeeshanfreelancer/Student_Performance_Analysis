@@ -46,15 +46,10 @@ npm install
 npm run dev
 ```
 
-### 4. Create First Admin
-POST `http://localhost:5000/api/auth/register`
-```json
-{
-  "name": "Admin User",
-  "email": "admin@school.com",
-  "password": "admin123",
-  "role": "admin"
-}
+### 4. Create First Admin (CLI only — public registration is disabled)
+```bash
+cd server
+npm run create-admin -- --email=admin@school.com --password=YourPassword123 --name="Admin User"
 ```
 
 ---
