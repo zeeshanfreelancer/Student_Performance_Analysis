@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import DataTable from '../../components/ui/DataTable';
 import Pagination from '../../components/ui/Pagination';
 import CreateStudentModal from '../../components/accounts/CreateStudentModal';
+import EditStudentModal from '../../components/accounts/EditStudentModal';
 import CreateAccountModal from '../../components/accounts/CreateAccountModal';
 import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
@@ -25,6 +26,8 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({});
   const [studentModalOpen, setStudentModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [parentModalOpen, setParentModalOpen] = useState(false);
   const [classOptions, setClassOptions] = useState([]);
   const debouncedSearch = useDebounce(search);
@@ -66,6 +69,11 @@ export default function StudentsPage() {
     } catch {
       toast.error('Export failed');
     }
+  };
+
+  const openEdit = (row) => {
+    setSelectedStudent(row);
+    setEditModalOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -176,13 +184,40 @@ export default function StudentsPage() {
           loading={loading}
           emptyTitle="No students found"
           onRowClick={user?.role === 'admin' ? (row) => navigate(`${basePath}/students/${row._id}`) : undefined}
-          actions={user?.role === 'admin' ? (row) => (
+          actions={(row) => (
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`${basePath}/students/${row._id}`); }} className="p-1 hover:text-primary-600"><FiEye /></button>
-              <button type="button" className="p-1 hover:text-primary-600"><FiEdit /></button>
-              <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }} className="p-1 hover:text-red-600"><FiTrash2 /></button>
+              {user?.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); navigate(`${basePath}/students/${row._id}`); }}
+                  className="p-1 hover:text-primary-600"
+                  title="View"
+                >
+                  <FiEye />
+                </button>
+              )}
+              {(user?.role === 'admin' || isTeacher) && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openEdit(row); }}
+                  className="p-1 hover:text-primary-600"
+                  title={isTeacher ? 'Change class' : 'Edit'}
+                >
+                  <FiEdit />
+                </button>
+              )}
+              {user?.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }}
+                  className="p-1 hover:text-red-600"
+                  title="Delete"
+                >
+                  <FiTrash2 />
+                </button>
+              )}
             </div>
-          ) : undefined}
+          )}
         />
         <Pagination page={page} total={total} onPageChange={setPage} />
       </div>
@@ -190,6 +225,12 @@ export default function StudentsPage() {
       <CreateStudentModal
         open={studentModalOpen}
         onClose={() => setStudentModalOpen(false)}
+        onSuccess={fetchStudents}
+      />
+      <EditStudentModal
+        open={editModalOpen}
+        student={selectedStudent}
+        onClose={() => { setEditModalOpen(false); setSelectedStudent(null); }}
         onSuccess={fetchStudents}
       />
       <CreateAccountModal

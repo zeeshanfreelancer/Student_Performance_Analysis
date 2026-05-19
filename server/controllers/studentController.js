@@ -2,6 +2,7 @@ import Student from '../models/Student.js';
 import User from '../models/User.js';
 import Parent from '../models/Parent.js';
 import Teacher from '../models/Teacher.js';
+import Class from '../models/Class.js';
 import Result from '../models/Result.js';
 import Attendance from '../models/Attendance.js';
 import Assignment from '../models/Assignment.js';
@@ -185,17 +186,45 @@ export const updateStudent = catchAsync(async (req, res) => {
       throw new AppError('You do not have permission to update this student', 403);
     }
     if (req.body.class && !teacherClassIds.includes(req.body.class.toString())) {
-      throw new AppError('You can only assign students to your classes', 403);
+      throw new AppError('You can only move students between your assigned classes', 403);
     }
   }
 
-  const updates = { ...req.body };
+  let updates = { ...req.body };
   delete updates.email;
   delete updates.password;
+
+  if (req.user.role === 'teacher') {
+    updates = { class: updates.class };
+    if (!updates.class) {
+      throw new AppError('Class is required', 400);
+    }
+  }
 
   if (req.file) {
     const result = await uploadToCloudinary(req.file.buffer, 'students');
     updates.profileImage = result.secure_url;
+  }
+
+  const classChanged =
+    updates.class && updates.class.toString() !== existing.class.toString();
+
+  if (classChanged) {
+    const [fromClass, toClass] = await Promise.all([
+      Class.findById(existing.class).select('name section'),
+      Class.findById(updates.class).select('name section'),
+    ]);
+    const fromLabel = fromClass ? `${fromClass.name} ${fromClass.section || ''}`.trim() : 'previous class';
+    const toLabel = toClass ? `${toClass.name} ${toClass.section || ''}`.trim() : 'new class';
+    await Student.findByIdAndUpdate(existing._id, {
+      $push: {
+        academicTimeline: {
+          title: 'Class changed',
+          description: `Moved from ${fromLabel} to ${toLabel}`,
+          type: 'promotion',
+        },
+      },
+    });
   }
 
   const student = await Student.findByIdAndUpdate(req.params.id, updates, {
