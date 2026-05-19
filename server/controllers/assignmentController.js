@@ -95,12 +95,31 @@ export const getAssignments = catchAsync(async (req, res) => {
 
 export const getAssignment = catchAsync(async (req, res) => {
   const assignment = await Assignment.findById(req.params.id)
-    .populate('class', 'name section')
-    .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
+    .populate('class', 'name section academicYear')
+    .populate({ path: 'teacher', populate: { path: 'user', select: 'name email' } })
     .populate('subject', 'name code')
-    .populate({ path: 'submissions.student', populate: { path: 'user', select: 'name email' } });
+    .populate({
+      path: 'submissions.student',
+      select: 'rollNo user',
+      populate: { path: 'user', select: 'name email' },
+    });
 
   if (!assignment) throw new AppError('Assignment not found', 404);
+
+  if (req.user.role === 'teacher') {
+    const teacher = await Teacher.findOne({ user: req.user._id });
+    if (!teacher || assignment.teacher._id.toString() !== teacher._id.toString()) {
+      throw new AppError('You do not have permission to view this assignment', 403);
+    }
+  }
+
+  if (req.user.role === 'student') {
+    const student = await Student.findOne({ user: req.user._id });
+    if (!student || assignment.class._id.toString() !== student.class.toString()) {
+      throw new AppError('You do not have permission to view this assignment', 403);
+    }
+  }
+
   res.json({ success: true, data: { assignment } });
 });
 

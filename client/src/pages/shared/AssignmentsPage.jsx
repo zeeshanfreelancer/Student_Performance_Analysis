@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
-import { FiPlus, FiUpload, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiTrash2, FiEye } from 'react-icons/fi';
 import DataTable from '../../components/ui/DataTable';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CreateAssignmentModal from '../../components/assignments/CreateAssignmentModal';
 import SubmitAssignmentModal from '../../components/assignments/SubmitAssignmentModal';
+import ViewAssignmentModal from '../../components/assignments/ViewAssignmentModal';
 import { assignmentService } from '../../services/assignmentService';
 import { formatDate, formatDateTime } from '../../utils/helpers';
 
@@ -29,12 +30,15 @@ export default function AssignmentsPage() {
   const { user } = useSelector((state) => state.auth);
   const isStudent = user?.role === 'student';
   const canCreate = user?.role === 'admin' || user?.role === 'teacher';
+  const canViewDetails = canCreate;
 
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [viewId, setViewId] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -61,6 +65,11 @@ export default function AssignmentsPage() {
   const openSubmit = (row) => {
     setSelected(row);
     setSubmitOpen(true);
+  };
+
+  const openView = (row) => {
+    setViewId(row._id);
+    setViewOpen(true);
   };
 
   const columns = isStudent
@@ -101,12 +110,23 @@ export default function AssignmentsPage() {
         data={assignments}
         loading={false}
         emptyTitle="No assignments"
+        onRowClick={canViewDetails ? openView : undefined}
         actions={(row) => (
           <div className="flex justify-end gap-2">
+            {canViewDetails && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); openView(row); }}
+                className="btn-secondary py-1.5 text-xs"
+                title="View assignment"
+              >
+                <FiEye className="mr-1 inline" /> View
+              </button>
+            )}
             {isStudent && (
               <button
                 type="button"
-                onClick={() => openSubmit(row)}
+                onClick={(e) => { e.stopPropagation(); openSubmit(row); }}
                 className="btn-primary py-1.5 text-xs"
                 title={row.submissionStatus === 'pending' ? 'Submit' : 'Update submission'}
               >
@@ -117,7 +137,7 @@ export default function AssignmentsPage() {
             {canCreate && (
               <button
                 type="button"
-                onClick={() => handleDelete(row._id)}
+                onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }}
                 className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/20"
                 title="Delete"
               >
@@ -139,6 +159,12 @@ export default function AssignmentsPage() {
         assignment={selected}
         onClose={() => { setSubmitOpen(false); setSelected(null); }}
         onSuccess={load}
+      />
+
+      <ViewAssignmentModal
+        open={viewOpen}
+        assignmentId={viewId}
+        onClose={() => { setViewOpen(false); setViewId(null); }}
       />
     </div>
   );
