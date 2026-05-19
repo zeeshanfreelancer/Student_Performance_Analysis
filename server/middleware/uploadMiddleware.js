@@ -12,6 +12,9 @@ const fileFilter = (req, file, cb) => {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/zip',
+    'application/x-zip-compressed',
+    'text/plain',
   ];
   if (allowed.includes(file.mimetype)) cb(null, true);
   else cb(new Error('Invalid file type'), false);

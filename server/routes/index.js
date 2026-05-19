@@ -13,6 +13,8 @@ import fileRoutes from './fileRoutes.js';
 import exportRoutes from './exportRoutes.js';
 import accountRoutes from './accountRoutes.js';
 import classRoutes from './classRoutes.js';
+import subjectRoutes from './subjectRoutes.js';
+import teacherRoutes from './teacherRoutes.js';
 
 const router = Router();
 
@@ -30,6 +32,8 @@ router.use('/files', fileRoutes);
 router.use('/export', exportRoutes);
 router.use('/accounts', accountRoutes);
 router.use('/classes', classRoutes);
+router.use('/subjects', subjectRoutes);
+router.use('/teachers', teacherRoutes);
 
 router.get('/health', (req, res) => {
   res.json({ success: true, message: 'School ERP API is running' });
