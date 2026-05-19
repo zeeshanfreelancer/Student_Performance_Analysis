@@ -35,11 +35,20 @@ export const initSocket = (httpServer) => {
 
     socket.join(`user:${userId}`);
 
-    socket.on('chat:join', (chatId) => {
-      socket.join(`chat:${chatId}`);
+    socket.on('chat:join', async (chatId) => {
+      try {
+        const chat = await Chat.findById(chatId);
+        if (!chat) return;
+        const isMember = chat.participants.some((p) => p.toString() === userId);
+        if (!isMember) return;
+        socket.join(`chat:${chatId}`);
+      } catch {
+        // ignore invalid join
+      }
     });
 
     socket.on('chat:typing', ({ chatId, isTyping }) => {
+      if (!chatId) return;
       socket.to(`chat:${chatId}`).emit('chat:typing', {
         userId,
         name: socket.user.name,
@@ -49,42 +58,76 @@ export const initSocket = (httpServer) => {
 
     socket.on('chat:message', async ({ chatId, content, image }) => {
       try {
+        if (!chatId || (!content?.trim() && !image)) return;
+
+        const chat = await Chat.findById(chatId);
+        if (!chat) {
+          socket.emit('chat:error', { message: 'Chat not found' });
+          return;
+        }
+        const isMember = chat.participants.some((p) => p.toString() === userId);
+        if (!isMember) {
+          socket.emit('chat:error', { message: 'Not authorized' });
+          return;
+        }
+
         const message = await Message.create({
           chat: chatId,
           sender: socket.user._id,
-          content: content || '',
+          content: (content || '').trim(),
           image,
           status: 'delivered',
         });
 
-        const chat = await Chat.findById(chatId);
-        if (chat) {
-          chat.lastMessage = message._id;
-          const other = chat.participants.find((p) => p.toString() !== userId);
-          if (other) {
-            const count = chat.unreadCount?.get(other.toString()) || 0;
-            chat.unreadCount.set(other.toString(), count + 1);
-          }
-          await chat.save();
-          io.to(`user:${other}`).emit('chat:notification', {
-            chatId,
-            message: await message.populate('sender', 'name profileImage'),
-          });
+        chat.lastMessage = message._id;
+        const other = chat.participants.find((p) => p.toString() !== userId);
+        if (other) {
+          const key = other.toString();
+          const count = chat.unreadCount?.get(key) || 0;
+          chat.unreadCount.set(key, count + 1);
+          chat.markModified('unreadCount');
         }
+        await chat.save();
 
         const populated = await message.populate('sender', 'name profileImage');
-        io.to(`chat:${chatId}`).emit('chat:message', populated);
+        const payload = populated.toObject ? populated.toObject() : populated;
+
+        io.to(`chat:${chatId}`).emit('chat:message', payload);
+
+        if (other) {
+          io.to(`user:${other.toString()}`).emit('chat:notification', {
+            chatId,
+            message: payload,
+          });
+        }
       } catch (err) {
-        socket.emit('chat:error', { message: err.message });
+        socket.emit('chat:error', { message: err.message || 'Failed to send message' });
       }
     });
 
     socket.on('chat:seen', async ({ chatId }) => {
-      await Message.updateMany(
-        { chat: chatId, sender: { $ne: socket.user._id } },
-        { $addToSet: { readBy: socket.user._id }, status: 'seen' }
-      );
-      socket.to(`chat:${chatId}`).emit('chat:seen', { userId, chatId });
+      if (!chatId) return;
+      try {
+        const chat = await Chat.findById(chatId);
+        if (!chat) return;
+        const isMember = chat.participants.some((p) => p.toString() === userId);
+        if (!isMember) return;
+
+        await Message.updateMany(
+          { chat: chatId, sender: { $ne: socket.user._id } },
+          { $addToSet: { readBy: socket.user._id }, status: 'seen' }
+        );
+
+        if (chat.unreadCount) {
+          chat.unreadCount.set(userId, 0);
+          chat.markModified('unreadCount');
+          await chat.save();
+        }
+
+        socket.to(`chat:${chatId}`).emit('chat:seen', { userId, chatId });
+      } catch {
+        // ignore
+      }
     });
 
     socket.on('disconnect', () => {

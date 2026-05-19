@@ -78,6 +78,8 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload;
         state.isAuthenticated = true;
+        const token = localStorage.getItem('accessToken');
+        if (token) connectSocket(token);
       })
       .addCase(fetchMe.rejected, (state) => {
         state.loading = false;
