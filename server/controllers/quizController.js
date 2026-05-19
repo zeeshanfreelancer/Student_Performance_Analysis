@@ -1,7 +1,9 @@
 import Quiz from '../models/Quiz.js';
 import Student from '../models/Student.js';
+import Teacher from '../models/Teacher.js';
 import { AppError } from '../utils/AppError.js';
 import { catchAsync } from '../utils/catchAsync.js';
+import { logActivity } from '../services/activityLogService.js';
 
 const shuffle = (arr) => {
   const a = [...arr];
@@ -12,10 +14,93 @@ const shuffle = (arr) => {
   return a;
 };
 
+const resolveTeacher = async (req) => {
+  if (req.user.role === 'teacher') {
+    const teacher = await Teacher.findOne({ user: req.user._id });
+    if (!teacher) throw new AppError('Teacher profile not found', 404);
+    return teacher;
+  }
+  if (req.user.role === 'admin') {
+    if (!req.body.teacher) throw new AppError('Teacher is required', 400);
+    const teacher = await Teacher.findById(req.body.teacher);
+    if (!teacher) throw new AppError('Teacher not found', 404);
+    return teacher;
+  }
+  throw new AppError('You do not have permission', 403);
+};
+
+const validateQuestions = (questions) => {
+  if (!questions?.length) throw new AppError('At least one question is required', 400);
+  questions.forEach((q, i) => {
+    if (!q.question?.trim()) throw new AppError(`Question ${i + 1} text is required`, 400);
+    if (!q.options?.length || q.options.filter((o) => o?.trim()).length < 2) {
+      throw new AppError(`Question ${i + 1} needs at least 2 options`, 400);
+    }
+    if (q.correctAnswer == null || q.correctAnswer < 0 || q.correctAnswer >= q.options.length) {
+      throw new AppError(`Question ${i + 1} needs a valid correct answer`, 400);
+    }
+  });
+};
+
 export const createQuiz = catchAsync(async (req, res) => {
-  const totalMarks = req.body.questions?.reduce((sum, q) => sum + (q.marks || 1), 0) || 0;
-  const quiz = await Quiz.create({ ...req.body, marks: totalMarks });
-  res.status(201).json({ success: true, data: { quiz } });
+  const teacher = await resolveTeacher(req);
+  const {
+    title,
+    description,
+    questions,
+    timer,
+    class: classId,
+    subject,
+    negativeMarking,
+    negativeMarks,
+    shuffleQuestions,
+    status,
+  } = req.body;
+
+  if (!title || !classId || !timer) {
+    throw new AppError('Title, class, and timer are required', 400);
+  }
+
+  const classIds = (teacher.classes || []).map((id) => id.toString());
+  if (req.user.role === 'teacher' && classIds.length && !classIds.includes(classId.toString())) {
+    throw new AppError('You can only create quizzes for your assigned classes', 403);
+  }
+
+  validateQuestions(questions);
+
+  const cleanedQuestions = questions.map((q) => ({
+    question: q.question.trim(),
+    options: q.options.map((o) => o.trim()).filter(Boolean),
+    correctAnswer: Number(q.correctAnswer),
+    marks: Number(q.marks) || 1,
+    category: q.category || 'general',
+  }));
+
+  const totalMarks = cleanedQuestions.reduce((sum, q) => sum + q.marks, 0);
+
+  const quiz = await Quiz.create({
+    title: title.trim(),
+    description: description || '',
+    questions: cleanedQuestions,
+    timer: Number(timer),
+    class: classId,
+    subject: subject || undefined,
+    teacher: teacher._id,
+    marks: totalMarks,
+    negativeMarking: !!negativeMarking,
+    negativeMarks: negativeMarking ? Number(negativeMarks) || 0.25 : 0,
+    shuffleQuestions: shuffleQuestions !== false,
+    status: status || 'draft',
+  });
+
+  const populated = await Quiz.findById(quiz._id)
+    .populate('class', 'name section')
+    .populate('subject', 'name code')
+    .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+
+  await logActivity(req.user._id, 'CREATE_QUIZ', { resource: 'Quiz', resourceId: quiz._id });
+
+  res.status(201).json({ success: true, data: { quiz: populated } });
 });
 
 export const getQuizzes = catchAsync(async (req, res) => {
@@ -23,20 +108,69 @@ export const getQuizzes = catchAsync(async (req, res) => {
   if (req.query.class) filter.class = req.query.class;
   if (req.query.status) filter.status = req.query.status;
 
+  if (req.user.role === 'teacher') {
+    const teacher = await Teacher.findOne({ user: req.user._id });
+    if (!teacher) throw new AppError('Teacher profile not found', 404);
+    filter.teacher = teacher._id;
+  } else if (req.query.teacher) {
+    filter.teacher = req.query.teacher;
+  }
+
+  const hideAnswers = req.user.role === 'student';
   const quizzes = await Quiz.find(filter)
     .populate('class', 'name section')
-    .select('-questions.correctAnswer')
+    .populate('subject', 'name code')
+    .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
+    .select(hideAnswers ? '-questions.correctAnswer' : '')
     .sort('-createdAt');
 
-  res.json({ success: true, data: { quizzes } });
+  const withMeta = quizzes.map((q) => {
+    const doc = q.toObject();
+    if (req.user.role !== 'student') {
+      doc.attemptCount = q.attempts?.length || 0;
+    }
+    return doc;
+  });
+
+  res.json({ success: true, data: { quizzes: withMeta } });
 });
 
 export const getQuiz = catchAsync(async (req, res) => {
   const quiz = await Quiz.findById(req.params.id)
-    .populate('class', 'name section')
-    .select(req.user.role === 'student' ? '-questions.correctAnswer' : '');
+    .populate('class', 'name section academicYear')
+    .populate('subject', 'name code')
+    .populate({ path: 'teacher', populate: { path: 'user', select: 'name email' } })
+    .populate({
+      path: 'attempts.student',
+      select: 'rollNo user',
+      populate: { path: 'user', select: 'name email' },
+    });
+
   if (!quiz) throw new AppError('Quiz not found', 404);
-  res.json({ success: true, data: { quiz } });
+
+  if (req.user.role === 'teacher') {
+    const teacher = await Teacher.findOne({ user: req.user._id });
+    if (!teacher || quiz.teacher._id.toString() !== teacher._id.toString()) {
+      throw new AppError('You do not have permission to view this quiz', 403);
+    }
+  }
+
+  if (req.user.role === 'student') {
+    const student = await Student.findOne({ user: req.user._id });
+    if (!student || quiz.class._id.toString() !== student.class.toString()) {
+      throw new AppError('You do not have permission to view this quiz', 403);
+    }
+  }
+
+  const hideAnswers = req.user.role === 'student';
+  const data = hideAnswers
+    ? quiz.toObject({ transform: (_, ret) => {
+        ret.questions = ret.questions?.map(({ correctAnswer, ...q }) => q);
+        return ret;
+      } })
+    : quiz;
+
+  res.json({ success: true, data: { quiz: data } });
 });
 
 export const startQuiz = catchAsync(async (req, res) => {
@@ -152,12 +286,39 @@ export const getQuizHistory = catchAsync(async (req, res) => {
 });
 
 export const updateQuiz = catchAsync(async (req, res) => {
-  const quiz = await Quiz.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const quiz = await Quiz.findById(req.params.id);
   if (!quiz) throw new AppError('Quiz not found', 404);
-  res.json({ success: true, data: { quiz } });
+
+  if (req.user.role === 'teacher') {
+    const teacher = await Teacher.findOne({ user: req.user._id });
+    if (!teacher || quiz.teacher.toString() !== teacher._id.toString()) {
+      throw new AppError('You can only edit your own quizzes', 403);
+    }
+  }
+
+  if (req.body.questions) validateQuestions(req.body.questions);
+
+  const updated = await Quiz.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  })
+    .populate('class', 'name section')
+    .populate('subject', 'name code');
+
+  res.json({ success: true, data: { quiz: updated } });
 });
 
 export const deleteQuiz = catchAsync(async (req, res) => {
+  const quiz = await Quiz.findById(req.params.id);
+  if (!quiz) throw new AppError('Quiz not found', 404);
+
+  if (req.user.role === 'teacher') {
+    const teacher = await Teacher.findOne({ user: req.user._id });
+    if (!teacher || quiz.teacher.toString() !== teacher._id.toString()) {
+      throw new AppError('You can only delete your own quizzes', 403);
+    }
+  }
+
   await Quiz.findByIdAndDelete(req.params.id);
   res.json({ success: true, message: 'Quiz deleted' });
 });
