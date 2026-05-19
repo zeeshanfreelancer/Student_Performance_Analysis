@@ -5,6 +5,7 @@ import Parent from '../models/Parent.js';
 import Assignment from '../models/Assignment.js';
 import Result from '../models/Result.js';
 import Attendance from '../models/Attendance.js';
+import { AppError } from '../utils/AppError.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import {
   getAIInsights,
@@ -12,7 +13,33 @@ import {
   getSubjectWiseMarks,
 } from '../services/analyticsService.js';
 
+const getTeacherScope = async (userId) => {
+  const teacher = await Teacher.findOne({ user: userId }).select('_id classes');
+  if (!teacher) return { teacherId: null, classIds: [], studentFilter: { _id: null } };
+  const classIds = teacher.classes || [];
+  return {
+    teacherId: teacher._id,
+    classIds,
+    studentFilter: classIds.length
+      ? { status: 'active', class: { $in: classIds } }
+      : { _id: null },
+  };
+};
+
 export const getDashboardStats = catchAsync(async (req, res) => {
+  const isTeacher = req.user.role === 'teacher';
+  const scope = isTeacher ? await getTeacherScope(req.user._id) : null;
+
+  const studentFilter = isTeacher ? scope.studentFilter : { status: 'active' };
+  const assignmentFilter = isTeacher && scope.teacherId
+    ? { teacher: scope.teacherId }
+  : {};
+  const openAssignmentFilter = {
+    ...assignmentFilter,
+    status: 'active',
+    deadline: { $gte: new Date() },
+  };
+
   const [
     studentProfileCount,
     teacherProfileCount,
@@ -24,28 +51,32 @@ export const getDashboardStats = catchAsync(async (req, res) => {
     totalAssignments,
     totalAttendanceRecords,
   ] = await Promise.all([
-    Student.countDocuments({ status: 'active' }),
-    Teacher.countDocuments({ status: 'active' }),
-    Parent.countDocuments({ status: 'active' }),
-    User.aggregate([
-      { $match: { status: 'active' } },
-      { $group: { _id: '$role', count: { $sum: 1 } } },
-    ]),
-    User.countDocuments({ status: 'active' }),
-    Student.find({ status: 'active' })
+    Student.countDocuments(studentFilter),
+    isTeacher ? 0 : Teacher.countDocuments({ status: 'active' }),
+    isTeacher ? 0 : Parent.countDocuments({ status: 'active' }),
+    isTeacher
+      ? Promise.resolve([])
+      : User.aggregate([
+          { $match: { status: 'active' } },
+          { $group: { _id: '$role', count: { $sum: 1 } } },
+        ]),
+    isTeacher ? 0 : User.countDocuments({ status: 'active' }),
+    Student.find(studentFilter)
       .populate('user', 'name email')
       .populate('class', 'name section')
       .select('rollNo gpa attendancePercentage user class'),
-    Assignment.countDocuments({ status: 'active', deadline: { $gte: new Date() } }),
-    Assignment.countDocuments(),
-    Attendance.countDocuments(),
+    Assignment.countDocuments(openAssignmentFilter),
+    Assignment.countDocuments(assignmentFilter),
+    isTeacher && scope.classIds.length
+      ? Attendance.countDocuments({ class: { $in: scope.classIds } })
+      : Attendance.countDocuments(),
   ]);
 
   const roleCounts = Object.fromEntries(usersByRole.map((r) => [r._id, r.count]));
 
-  const totalStudents = studentProfileCount || roleCounts.student || 0;
-  const totalTeachers = teacherProfileCount || roleCounts.teacher || 0;
-  const totalParents = parentProfileCount || roleCounts.parent || 0;
+  const totalStudents = studentProfileCount || (isTeacher ? 0 : roleCounts.student || 0);
+  const totalTeachers = isTeacher ? 0 : teacherProfileCount || roleCounts.teacher || 0;
+  const totalParents = isTeacher ? 0 : parentProfileCount || roleCounts.parent || 0;
 
   const avgAttendance = students.length
     ? Math.round(students.reduce((a, s) => a + (s.attendancePercentage || 0), 0) / students.length)
@@ -72,27 +103,61 @@ export const getDashboardStats = catchAsync(async (req, res) => {
       totalStudents,
       totalTeachers,
       totalParents,
-      activeUsers,
+      activeUsers: isTeacher ? students.length : activeUsers,
       attendancePercentage: avgAttendance,
       topPerformers,
       failedStudents,
       pendingAssignments,
       totalAssignments,
       totalAttendanceRecords,
-      adminCount: roleCounts.admin || 0,
+      adminCount: isTeacher ? 0 : roleCounts.admin || 0,
+      myClasses: isTeacher ? scope.classIds.length : undefined,
     },
   });
 });
 
 export const getPerformanceAnalytics = catchAsync(async (req, res) => {
-  const classId = req.query.class;
-  const filter = classId ? { class: classId } : {};
+  let classId = req.query.class;
+  let classIds = null;
+
+  if (req.user.role === 'teacher') {
+    const scope = await getTeacherScope(req.user._id);
+    classIds = scope.classIds;
+    if (!classIds.length) {
+      return res.json({
+        success: true,
+        data: {
+          insights: { weakStudents: [], lowAttendance: [], topPerformers: [], suggestions: [] },
+          attendanceTrends: [],
+          semesterTrends: [],
+          classAverages: [],
+          rankings: [],
+        },
+      });
+    }
+    if (classId && !classIds.some((id) => id.toString() === classId)) {
+      throw new AppError('You do not have permission', 403);
+    }
+    if (!classId) classIds = scope.classIds;
+  }
+
+  const studentFilter = classId
+    ? { class: classId }
+    : classIds?.length
+      ? { class: { $in: classIds } }
+      : {};
+
+  const resultFilter = classId
+    ? { class: classId }
+    : classIds?.length
+      ? { class: { $in: classIds } }
+      : {};
 
   const [insights, attendanceTrends, semesterTrends, classAverages] = await Promise.all([
-    getAIInsights(classId),
-    getAttendanceTrends(classId),
+    getAIInsights(classId, classIds),
+    getAttendanceTrends(classId, classIds),
     Result.aggregate([
-      { $match: filter },
+      { $match: resultFilter },
       {
         $group: {
           _id: '$semester',
@@ -103,7 +168,7 @@ export const getPerformanceAnalytics = catchAsync(async (req, res) => {
       { $sort: { _id: 1 } },
     ]),
     Result.aggregate([
-      { $match: filter },
+      { $match: resultFilter },
       {
         $group: {
           _id: '$subject',
@@ -123,7 +188,7 @@ export const getPerformanceAnalytics = catchAsync(async (req, res) => {
     ]),
   ]);
 
-  const rankings = await Student.find(filter)
+  const rankings = await Student.find({ status: 'active', ...studentFilter })
     .populate('user', 'name')
     .populate('class', 'name section')
     .sort('-gpa')
@@ -155,19 +220,29 @@ export const getGrowthAnalytics = catchAsync(async (req, res) => {
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
+  let studentMatch = { createdAt: { $gte: sixMonthsAgo } };
+  if (req.user.role === 'teacher') {
+    const scope = await getTeacherScope(req.user._id);
+    studentMatch = scope.classIds.length
+      ? { ...studentMatch, class: { $in: scope.classIds } }
+      : { _id: null };
+  }
+
   const [userGrowth, studentGrowth] = await Promise.all([
-    User.aggregate([
-      { $match: { createdAt: { $gte: sixMonthsAgo } } },
-      {
-        $group: {
-          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' }, role: '$role' },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } },
-    ]),
+    req.user.role === 'teacher'
+      ? Promise.resolve([])
+      : User.aggregate([
+          { $match: { createdAt: { $gte: sixMonthsAgo } } },
+          {
+            $group: {
+              _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' }, role: '$role' },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { '_id.year': 1, '_id.month': 1 } },
+        ]),
     Student.aggregate([
-      { $match: { createdAt: { $gte: sixMonthsAgo } } },
+      { $match: studentMatch },
       {
         $group: {
           _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },

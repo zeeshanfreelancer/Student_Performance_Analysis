@@ -2,8 +2,12 @@ import Student from '../models/Student.js';
 import Attendance from '../models/Attendance.js';
 import Result from '../models/Result.js';
 
-export const getAIInsights = async (classId) => {
-  const filter = classId ? { class: classId } : {};
+export const getAIInsights = async (classId, classIds = null) => {
+  const filter = classId
+    ? { class: classId }
+    : classIds?.length
+      ? { class: { $in: classIds } }
+      : {};
   const students = await Student.find(filter).populate('user', 'name');
 
   const weakStudents = students.filter((s) => s.gpa < 2.5);
@@ -46,12 +50,13 @@ export const getAIInsights = async (classId) => {
   };
 };
 
-export const getAttendanceTrends = async (classId, months = 6) => {
+export const getAttendanceTrends = async (classId, classIds = null, months = 6) => {
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - months);
 
   const match = { date: { $gte: startDate } };
   if (classId) match.class = classId;
+  else if (classIds?.length) match.class = { $in: classIds };
 
   return Attendance.aggregate([
     { $match: match },

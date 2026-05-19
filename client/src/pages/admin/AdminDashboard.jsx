@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { FiUsers, FiBook, FiUserCheck, FiCalendar, FiAward, FiAlertTriangle, FiFileText } from 'react-icons/fi';
+import { useSelector } from 'react-redux';
+import { FiUsers, FiBook, FiUserCheck, FiCalendar, FiAward, FiAlertTriangle, FiFileText, FiLayers } from 'react-icons/fi';
 import StatCard from '../../components/ui/StatCard';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EmptyState from '../../components/ui/EmptyState';
@@ -8,6 +9,8 @@ import { GrowthAreaChart, AttendanceLineChart, SubjectBarChart } from '../../cha
 import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
+  const { user } = useSelector((state) => state.auth);
+  const isTeacher = user?.role === 'teacher';
   const [stats, setStats] = useState(null);
   const [growth, setGrowth] = useState(null);
   const [performance, setPerformance] = useState(null);
@@ -57,17 +60,30 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {isTeacher ? 'Teacher Dashboard' : 'Admin Dashboard'}
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Live statistics from your database
+          {isTeacher ? 'Overview of your classes and students' : 'Live statistics from your database'}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <StatCard title="Total Students" value={stats?.totalStudents ?? 0} icon={FiBook} color="primary" />
-        <StatCard title="Total Teachers" value={stats?.totalTeachers ?? 0} icon={FiUsers} color="green" />
-        <StatCard title="Total Parents" value={stats?.totalParents ?? 0} icon={FiUserCheck} color="purple" />
-        <StatCard title="Active Users" value={stats?.activeUsers ?? 0} icon={FiUsers} color="yellow" />
+        <StatCard
+          title={isTeacher ? 'My Students' : 'Total Students'}
+          value={stats?.totalStudents ?? 0}
+          icon={FiBook}
+          color="primary"
+        />
+        {isTeacher ? (
+          <StatCard title="My Classes" value={stats?.myClasses ?? 0} icon={FiLayers} color="green" />
+        ) : (
+          <>
+            <StatCard title="Total Teachers" value={stats?.totalTeachers ?? 0} icon={FiUsers} color="green" />
+            <StatCard title="Total Parents" value={stats?.totalParents ?? 0} icon={FiUserCheck} color="purple" />
+            <StatCard title="Active Users" value={stats?.activeUsers ?? 0} icon={FiUsers} color="yellow" />
+          </>
+        )}
         <StatCard title="Avg Attendance" value={`${stats?.attendancePercentage ?? 0}%`} icon={FiCalendar} color="green" />
         <StatCard title="At-Risk (GPA < 2.0)" value={stats?.failedStudents ?? 0} icon={FiAlertTriangle} color="red" />
         <StatCard title="Open Assignments" value={stats?.pendingAssignments ?? 0} icon={FiAward} color="primary" />
