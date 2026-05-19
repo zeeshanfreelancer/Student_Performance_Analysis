@@ -24,9 +24,16 @@ export default function Navbar({ title }) {
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white/80 px-4 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80 lg:px-6">
       <div className="flex items-center gap-4">
         <button
+          type="button"
+          aria-label="Toggle menu"
           onClick={() => {
-            dispatch(toggleSidebar());
-            dispatch(setMobileMenuOpen(true));
+            const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+            if (isDesktop) {
+              dispatch(setMobileMenuOpen(false));
+              dispatch(toggleSidebar());
+            } else {
+              dispatch(setMobileMenuOpen(true));
+            }
           }}
           className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
         >
