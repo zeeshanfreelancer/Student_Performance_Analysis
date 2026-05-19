@@ -6,6 +6,8 @@ import {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export function SubjectBarChart({ data = [] }) {
+  const hasMarks = data.some((d) => d.marks != null);
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>
@@ -14,8 +16,8 @@ export function SubjectBarChart({ data = [] }) {
         <YAxis tick={{ fontSize: 12 }} />
         <Tooltip />
         <Legend />
-        <Bar dataKey="marks" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="average" fill="#10b981" radius={[4, 4, 0, 0]} />
+        {hasMarks && <Bar dataKey="marks" name="Marks" fill="#3b82f6" radius={[4, 4, 0, 0]} />}
+        <Bar dataKey="average" name="Average %" fill="#10b981" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

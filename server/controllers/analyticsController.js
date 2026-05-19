@@ -14,27 +14,57 @@ import {
 
 export const getDashboardStats = catchAsync(async (req, res) => {
   const [
-    totalStudents,
-    totalTeachers,
-    totalParents,
+    studentProfileCount,
+    teacherProfileCount,
+    parentProfileCount,
+    usersByRole,
     activeUsers,
     students,
     pendingAssignments,
+    totalAssignments,
+    totalAttendanceRecords,
   ] = await Promise.all([
     Student.countDocuments({ status: 'active' }),
     Teacher.countDocuments({ status: 'active' }),
     Parent.countDocuments({ status: 'active' }),
+    User.aggregate([
+      { $match: { status: 'active' } },
+      { $group: { _id: '$role', count: { $sum: 1 } } },
+    ]),
     User.countDocuments({ status: 'active' }),
-    Student.find({ status: 'active' }).select('gpa attendancePercentage'),
+    Student.find({ status: 'active' })
+      .populate('user', 'name email')
+      .populate('class', 'name section')
+      .select('rollNo gpa attendancePercentage user class'),
     Assignment.countDocuments({ status: 'active', deadline: { $gte: new Date() } }),
+    Assignment.countDocuments(),
+    Attendance.countDocuments(),
   ]);
 
+  const roleCounts = Object.fromEntries(usersByRole.map((r) => [r._id, r.count]));
+
+  const totalStudents = studentProfileCount || roleCounts.student || 0;
+  const totalTeachers = teacherProfileCount || roleCounts.teacher || 0;
+  const totalParents = parentProfileCount || roleCounts.parent || 0;
+
   const avgAttendance = students.length
-    ? Math.round(students.reduce((a, s) => a + s.attendancePercentage, 0) / students.length)
+    ? Math.round(students.reduce((a, s) => a + (s.attendancePercentage || 0), 0) / students.length)
     : 0;
 
-  const topPerformers = [...students].sort((a, b) => b.gpa - a.gpa).slice(0, 5);
-  const failedStudents = students.filter((s) => s.gpa < 2.0).length;
+  const topPerformers = [...students]
+    .sort((a, b) => (b.gpa || 0) - (a.gpa || 0))
+    .slice(0, 5)
+    .map((s) => ({
+      _id: s._id,
+      rollNo: s.rollNo,
+      name: s.user?.name,
+      email: s.user?.email,
+      gpa: s.gpa,
+      attendancePercentage: s.attendancePercentage,
+      className: s.class ? `${s.class.name} ${s.class.section || ''}`.trim() : '',
+    }));
+
+  const failedStudents = students.filter((s) => (s.gpa || 0) < 2.0).length;
 
   res.json({
     success: true,
@@ -47,6 +77,9 @@ export const getDashboardStats = catchAsync(async (req, res) => {
       topPerformers,
       failedStudents,
       pendingAssignments,
+      totalAssignments,
+      totalAttendanceRecords,
+      adminCount: roleCounts.admin || 0,
     },
   });
 });
