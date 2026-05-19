@@ -6,6 +6,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import LoginPage from '../pages/auth/LoginPage';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import StudentsPage from '../pages/admin/StudentsPage';
+import ClassesPage from '../pages/admin/ClassesPage';
 import ProfilePage from '../pages/shared/ProfilePage';
 import ChatPage from '../pages/shared/ChatPage';
 import AnalyticsPage from '../pages/shared/AnalyticsPage';
@@ -28,6 +29,7 @@ function RoleRedirect() {
 const adminRoutes = [
   { path: 'dashboard', element: <AdminDashboard /> },
   { path: 'users', element: <UsersPage /> },
+  { path: 'classes', element: <ClassesPage /> },
   { path: 'students', element: <StudentsPage /> },
   { path: 'attendance', element: <AttendancePage /> },
   { path: 'analytics', element: <AnalyticsPage /> },

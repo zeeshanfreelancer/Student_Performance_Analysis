@@ -85,9 +85,13 @@ const seed = async () => {
       status: 'active',
     });
     console.log('  Created teacher profile');
+  } else if (!teacher.classes?.length) {
+    teacher.classes = [class10._id];
+    await teacher.save();
   }
 
   await Class.findByIdAndUpdate(class10._id, { classTeacher: teacher._id });
+  await Teacher.findByIdAndUpdate(teacher._id, { $addToSet: { classes: class10._id } });
   await Subject.updateMany({ _id: { $in: subjects.map((s) => s._id) } }, { teacher: teacher._id });
 
   const parentUser = await ensureUser({

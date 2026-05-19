@@ -74,12 +74,38 @@ export const createStudent = catchAsync(async (req, res) => {
   res.status(201).json({ success: true, data: { student: populated } });
 });
 
+const getTeacherClassIds = async (userId) => {
+  const teacher = await Teacher.findOne({ user: userId }).select('classes');
+  return (teacher?.classes || []).map((id) => id.toString());
+};
+
 export const getStudents = catchAsync(async (req, res) => {
   let query = Student.find().populate('user', 'name email phone profileImage status')
     .populate('class', 'name section')
     .populate('department', 'name code');
 
-  if (req.query.class) query = query.where('class', req.query.class);
+  if (req.user.role === 'teacher') {
+    const teacherClassIds = await getTeacherClassIds(req.user._id);
+    if (!teacherClassIds.length) {
+      return res.json({
+        success: true,
+        results: 0,
+        total: 0,
+        page: parseInt(req.query.page, 10) || 1,
+        data: { students: [] },
+      });
+    }
+    if (req.query.class) {
+      if (!teacherClassIds.includes(req.query.class.toString())) {
+        throw new AppError('You can only view students in your assigned classes', 403);
+      }
+      query = query.where('class', req.query.class);
+    } else {
+      query = query.where('class').in(teacherClassIds);
+    }
+  } else if (req.query.class) {
+    query = query.where('class', req.query.class);
+  }
   if (req.query.department) query = query.where('department', req.query.department);
   if (req.query.gpaBelow) query = query.where('gpa').lt(parseFloat(req.query.gpaBelow));
   if (req.query.attendanceBelow) {
@@ -114,6 +140,14 @@ export const getStudent = catchAsync(async (req, res) => {
     .populate({ path: 'parentId', populate: { path: 'user', select: 'name email phone' } });
 
   if (!student) throw new AppError('Student not found', 404);
+
+  if (req.user.role === 'teacher') {
+    const teacherClassIds = await getTeacherClassIds(req.user._id);
+    if (!teacherClassIds.includes(student.class._id.toString())) {
+      throw new AppError('You do not have permission to view this student', 403);
+    }
+  }
+
   res.json({ success: true, data: { student } });
 });
 
@@ -142,6 +176,19 @@ export const getStudentProfile = catchAsync(async (req, res) => {
 });
 
 export const updateStudent = catchAsync(async (req, res) => {
+  const existing = await Student.findById(req.params.id);
+  if (!existing) throw new AppError('Student not found', 404);
+
+  if (req.user.role === 'teacher') {
+    const teacherClassIds = await getTeacherClassIds(req.user._id);
+    if (!teacherClassIds.includes(existing.class.toString())) {
+      throw new AppError('You do not have permission to update this student', 403);
+    }
+    if (req.body.class && !teacherClassIds.includes(req.body.class.toString())) {
+      throw new AppError('You can only assign students to your classes', 403);
+    }
+  }
+
   const updates = { ...req.body };
   delete updates.email;
   delete updates.password;

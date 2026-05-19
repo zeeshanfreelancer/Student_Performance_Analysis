@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FiGrid, FiUsers, FiBook, FiCalendar, FiBarChart2,
+  FiGrid, FiUsers, FiBook, FiLayers, FiCalendar, FiBarChart2,
   FiFileText, FiHelpCircle, FiMessageSquare, FiActivity, FiX,
 } from 'react-icons/fi';
 import { NAV_ITEMS } from '../../utils/constants';
@@ -12,6 +12,7 @@ const iconMap = {
   dashboard: FiGrid,
   users: FiUsers,
   students: FiBook,
+  classes: FiLayers,
   attendance: FiCalendar,
   analytics: FiBarChart2,
   assignments: FiFileText,

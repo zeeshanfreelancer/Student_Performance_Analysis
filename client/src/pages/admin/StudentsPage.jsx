@@ -8,11 +8,13 @@ import Pagination from '../../components/ui/Pagination';
 import CreateStudentModal from '../../components/accounts/CreateStudentModal';
 import CreateAccountModal from '../../components/accounts/CreateAccountModal';
 import { studentService } from '../../services/studentService';
+import { classService } from '../../services/classService';
 import { useDebounce } from '../../hooks/useDebounce';
 import { downloadBlob } from '../../utils/helpers';
 
 export default function StudentsPage() {
   const { user } = useSelector((state) => state.auth);
+  const isTeacher = user?.role === 'teacher';
   const basePath = `/${user?.role || 'admin'}`;
   const canCreateParent = user?.role === 'admin' || user?.role === 'teacher';
 
@@ -24,8 +26,17 @@ export default function StudentsPage() {
   const [filters, setFilters] = useState({});
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [parentModalOpen, setParentModalOpen] = useState(false);
+  const [classOptions, setClassOptions] = useState([]);
   const debouncedSearch = useDebounce(search);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isTeacher && user?.role !== 'admin') return;
+    classService
+      .getAll()
+      .then(({ data }) => setClassOptions(data.data.classes || []))
+      .catch(() => {});
+  }, [isTeacher, user?.role]);
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -72,7 +83,11 @@ export default function StudentsPage() {
     { key: 'rollNo', label: 'Roll No', render: (r) => r.rollNo },
     { key: 'name', label: 'Name', render: (r) => r.user?.name },
     { key: 'email', label: 'Email', render: (r) => r.user?.email },
-    { key: 'class', label: 'Class', render: (r) => r.class?.name },
+    {
+      key: 'class',
+      label: 'Class',
+      render: (r) => (r.class ? `${r.class.name} ${r.class.section || ''}`.trim() : '—'),
+    },
     { key: 'gpa', label: 'GPA', render: (r) => r.gpa?.toFixed(2) },
     { key: 'attendance', label: 'Attendance', render: (r) => `${r.attendancePercentage}%` },
     { key: 'status', label: 'Status', render: (r) => (
@@ -108,6 +123,12 @@ export default function StudentsPage() {
         </div>
       </div>
 
+      {isTeacher && classOptions.length === 0 && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+          No classes are assigned to you yet. Ask an admin to create a class and assign you as the teacher, then you can add students here.
+        </p>
+      )}
+
       <div className="card space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="relative flex-1">
@@ -119,6 +140,20 @@ export default function StudentsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          {classOptions.length > 0 && (
+            <select
+              className="input-field sm:w-48"
+              value={filters.class || ''}
+              onChange={(e) => setFilters({ ...filters, class: e.target.value || undefined })}
+            >
+              <option value="">All classes</option>
+              {classOptions.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name} {c.section} ({c.academicYear})
+                </option>
+              ))}
+            </select>
+          )}
           <select
             className="input-field sm:w-48"
             onChange={(e) => setFilters({ ...filters, attendanceBelow: e.target.value || undefined })}

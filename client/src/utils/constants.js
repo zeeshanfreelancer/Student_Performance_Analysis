@@ -23,6 +23,7 @@ export const NAV_ITEMS = {
   admin: [
     { path: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/admin/users', label: 'Users', icon: 'users' },
+    { path: '/admin/classes', label: 'Classes', icon: 'classes' },
     { path: '/admin/students', label: 'Students', icon: 'students' },
     { path: '/admin/attendance', label: 'Attendance', icon: 'attendance' },
     { path: '/admin/analytics', label: 'Analytics', icon: 'analytics' },

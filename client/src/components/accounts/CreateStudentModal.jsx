@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { FiX } from 'react-icons/fi';
+import { useSelector } from 'react-redux';
 import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
 
 export default function CreateStudentModal({ open, onClose, onSuccess }) {
+  const { user } = useSelector((state) => state.auth);
+  const isTeacher = user?.role === 'teacher';
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -78,14 +81,20 @@ export default function CreateStudentModal({ open, onClose, onSuccess }) {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Class</label>
-              <select className="input-field" {...register('class', { required: true })}>
-                <option value="">Select class</option>
-                {classes.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name} {c.section} ({c.academicYear})
-                  </option>
-                ))}
-              </select>
+              {isTeacher && classes.length === 0 ? (
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  No class assigned to you. Contact admin to assign a class first.
+                </p>
+              ) : (
+                <select className="input-field" {...register('class', { required: true })}>
+                  <option value="">Select class</option>
+                  {classes.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} {c.section} ({c.academicYear})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Phone</label>
@@ -112,7 +121,11 @@ export default function CreateStudentModal({ open, onClose, onSuccess }) {
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={loading} className="btn-primary flex-1">
+            <button
+              type="submit"
+              disabled={loading || (isTeacher && classes.length === 0)}
+              className="btn-primary flex-1"
+            >
               {loading ? 'Creating...' : 'Create Student'}
             </button>
           </div>
