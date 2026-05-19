@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
-import { FiPlus, FiTrash2, FiEye } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEye, FiPlay } from 'react-icons/fi';
 import DataTable from '../../components/ui/DataTable';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CreateQuizModal from '../../components/quizzes/CreateQuizModal';
@@ -22,6 +23,7 @@ const statusBadge = (status) => {
 };
 
 export default function QuizzesPage() {
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const isStudent = user?.role === 'student';
   const canManage = user?.role === 'admin' || user?.role === 'teacher';
@@ -33,14 +35,12 @@ export default function QuizzesPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    const fetch = isStudent
-      ? quizService.getAll({ status: 'published' })
-      : quizService.getAll();
+    const fetch = quizService.getAll();
     fetch
       .then(({ data }) => setQuizzes(data.data.quizzes))
       .catch(() => toast.error('Failed to load quizzes'))
       .finally(() => setLoading(false));
-  }, [isStudent]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -58,9 +58,17 @@ export default function QuizzesPage() {
   const columns = isStudent
     ? [
         { key: 'title', label: 'Title' },
+        { key: 'subject', label: 'Subject', render: (r) => r.subject?.name || '—' },
         { key: 'timer', label: 'Time (min)', render: (r) => Math.round((r.timer || 0) / 60) },
         { key: 'marks', label: 'Marks' },
-        { key: 'status', label: 'Status', render: (r) => statusBadge(r.status) },
+        {
+          key: 'score',
+          label: 'Your score',
+          render: (r) =>
+            r.myAttempt
+              ? `${r.myAttempt.score}/${r.myAttempt.totalMarks} (${r.myAttempt.percentage}%)`
+              : 'Not taken',
+        },
       ]
     : [
         { key: 'title', label: 'Title' },
@@ -101,29 +109,48 @@ export default function QuizzesPage() {
         data={quizzes}
         loading={false}
         emptyTitle="No quizzes available"
-        onRowClick={canManage ? openView : undefined}
-        actions={
+        onRowClick={
           canManage
-            ? (row) => (
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); openView(row); }}
-                    className="btn-secondary py-1.5 text-xs"
-                  >
-                    <FiEye className="mr-1 inline" /> View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }}
-                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/20"
-                  >
-                    <FiTrash2 />
-                  </button>
-                </div>
-              )
-            : undefined
+            ? openView
+            : isStudent
+              ? (row) => navigate(`/student/quizzes/${row._id}`)
+              : undefined
         }
+        actions={(row) => (
+          <div className="flex justify-end gap-2">
+            {canManage && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openView(row); }}
+                  className="btn-secondary py-1.5 text-xs"
+                >
+                  <FiEye className="mr-1 inline" /> View
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }}
+                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/20"
+                >
+                  <FiTrash2 />
+                </button>
+              </>
+            )}
+            {isStudent && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/student/quizzes/${row._id}`);
+                }}
+                className="btn-primary py-1.5 text-xs"
+              >
+                <FiPlay className="mr-1 inline" />
+                {row.hasAttempted ? 'Retake' : 'Take quiz'}
+              </button>
+            )}
+          </div>
+        )}
       />
 
       <CreateQuizModal

@@ -105,8 +105,17 @@ export const createQuiz = catchAsync(async (req, res) => {
 
 export const getQuizzes = catchAsync(async (req, res) => {
   const filter = {};
-  if (req.query.class) filter.class = req.query.class;
-  if (req.query.status) filter.status = req.query.status;
+  let student = null;
+
+  if (req.user.role === 'student') {
+    student = await Student.findOne({ user: req.user._id });
+    if (!student) throw new AppError('Student profile not found', 404);
+    filter.class = student.class;
+    filter.status = 'published';
+  } else {
+    if (req.query.class) filter.class = req.query.class;
+    if (req.query.status) filter.status = req.query.status;
+  }
 
   if (req.user.role === 'teacher') {
     const teacher = await Teacher.findOne({ user: req.user._id });
@@ -121,12 +130,23 @@ export const getQuizzes = catchAsync(async (req, res) => {
     .populate('class', 'name section')
     .populate('subject', 'name code')
     .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
-    .select(hideAnswers ? '-questions.correctAnswer' : '')
+    .select(hideAnswers ? '-questions.correctAnswer -questions.options' : '')
     .sort('-createdAt');
 
   const withMeta = quizzes.map((q) => {
     const doc = q.toObject();
-    if (req.user.role !== 'student') {
+    if (req.user.role === 'student' && student) {
+      const attempt = q.attempts?.find((a) => a.student.toString() === student._id.toString());
+      doc.hasAttempted = !!attempt;
+      doc.myAttempt = attempt
+        ? {
+            score: attempt.score,
+            totalMarks: attempt.totalMarks,
+            percentage: attempt.percentage,
+            completedAt: attempt.completedAt,
+          }
+        : null;
+    } else if (req.user.role !== 'student') {
       doc.attemptCount = q.attempts?.length || 0;
     }
     return doc;
@@ -178,6 +198,12 @@ export const startQuiz = catchAsync(async (req, res) => {
   if (!quiz) throw new AppError('Quiz not found', 404);
   if (quiz.status !== 'published') throw new AppError('Quiz not available', 400);
 
+  const student = await Student.findOne({ user: req.user._id });
+  if (!student) throw new AppError('Student profile not found', 404);
+  if (quiz.class.toString() !== student.class.toString()) {
+    throw new AppError('This quiz is not for your class', 403);
+  }
+
   let questions = quiz.questions.map((q) => ({
     _id: q._id,
     question: q.question,
@@ -188,14 +214,27 @@ export const startQuiz = catchAsync(async (req, res) => {
 
   if (quiz.shuffleQuestions) questions = shuffle(questions);
 
+  const existingAttempt = quiz.attempts?.find((a) => a.student.toString() === student._id.toString());
+
   res.json({
     success: true,
     data: {
       quizId: quiz._id,
       title: quiz.title,
+      description: quiz.description,
       timer: quiz.timer,
+      marks: quiz.marks,
       questions,
       totalQuestions: questions.length,
+      hasAttempted: !!existingAttempt,
+      previousAttempt: existingAttempt
+        ? {
+            score: existingAttempt.score,
+            totalMarks: existingAttempt.totalMarks,
+            percentage: existingAttempt.percentage,
+            completedAt: existingAttempt.completedAt,
+          }
+        : null,
     },
   });
 });
@@ -207,6 +246,11 @@ export const submitQuiz = catchAsync(async (req, res) => {
 
   const student = await Student.findOne({ user: req.user._id });
   if (!student) throw new AppError('Student profile not found', 404);
+
+  if (quiz.class.toString() !== student.class.toString()) {
+    throw new AppError('This quiz is not for your class', 403);
+  }
+  if (quiz.status !== 'published') throw new AppError('Quiz not available', 400);
 
   let score = 0;
   let totalMarks = 0;
@@ -235,7 +279,14 @@ export const submitQuiz = catchAsync(async (req, res) => {
     completedAt: new Date(),
   };
 
-  quiz.attempts.push(attempt);
+  const existingIdx = quiz.attempts.findIndex(
+    (a) => a.student.toString() === student._id.toString()
+  );
+  if (existingIdx >= 0) {
+    quiz.attempts[existingIdx] = attempt;
+  } else {
+    quiz.attempts.push(attempt);
+  }
   await quiz.save();
 
   res.json({

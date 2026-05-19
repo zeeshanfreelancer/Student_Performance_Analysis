@@ -12,6 +12,7 @@ import AnalyticsPage from '../pages/shared/AnalyticsPage';
 import AttendancePage from '../pages/shared/AttendancePage';
 import AssignmentsPage from '../pages/shared/AssignmentsPage';
 import QuizzesPage from '../pages/shared/QuizzesPage';
+import TakeQuizPage from '../pages/student/TakeQuizPage';
 import UsersPage from '../pages/admin/UsersPage';
 import ParentDashboard from '../pages/parent/ParentDashboard';
 import StudentDashboard from '../pages/student/StudentDashboard';
@@ -57,6 +58,7 @@ const studentRoutes = [
   { path: 'attendance', element: <AttendancePage /> },
   { path: 'assignments', element: <AssignmentsPage /> },
   { path: 'quizzes', element: <QuizzesPage /> },
+  { path: 'quizzes/:quizId', element: <TakeQuizPage /> },
   { path: 'analytics', element: <AnalyticsPage /> },
   { path: 'chat', element: <ChatPage /> },
   { path: 'settings', element: <ProfilePage /> },
