@@ -117,6 +117,59 @@ export const sendAccountCredentialsEmail = async ({ name, email, password, role 
   }
 };
 
+const buildPasswordResetEmail = ({ name, resetUrl }) => {
+  const subject = `${APP_NAME} – Reset your password`;
+  const text = `
+Hello ${name},
+
+You requested a password reset for your ${APP_NAME} account.
+
+Reset your password by opening this link (valid for 1 hour):
+${resetUrl}
+
+If you did not request this, ignore this email. Your password will not change.
+
+— ${APP_NAME}
+`.trim();
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 20px;">
+  <h2 style="color: #1e40af;">${APP_NAME}</h2>
+  <p>Hello <strong>${escapeHtml(name)}</strong>,</p>
+  <p>You requested a password reset. Click the button below to choose a new password. This link expires in <strong>1 hour</strong>.</p>
+  <p style="margin: 24px 0;">
+    <a href="${escapeHtml(resetUrl)}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">Reset password</a>
+  </p>
+  <p style="font-size: 13px; color: #64748b;">Or copy this link into your browser:<br/><a href="${escapeHtml(resetUrl)}">${escapeHtml(resetUrl)}</a></p>
+  <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+  <p style="font-size: 12px; color: #94a3b8;">If you did not request a password reset, you can safely ignore this email.</p>
+</body>
+</html>`.trim();
+
+  return { subject, text, html };
+};
+
+export const sendPasswordResetEmail = async ({ name, email, resetUrl }) => {
+  if (!isEmailConfigured()) {
+    return { sent: false, skipped: true, reason: 'SMTP not configured' };
+  }
+
+  const transport = getTransporter();
+  const from = process.env.MAIL_FROM || `"${APP_NAME}" <${process.env.SMTP_USER}>`;
+  const { subject, text, html } = buildPasswordResetEmail({ name, resetUrl });
+
+  try {
+    await transport.sendMail({ from, to: email, subject, text, html });
+    return { sent: true };
+  } catch (err) {
+    console.error('[email] Failed to send password reset to', email, err.message);
+    return { sent: false, error: err.message };
+  }
+};
+
 export const verifyEmailConnection = async () => {
   const transport = getTransporter();
   if (!transport) return { ok: false, message: 'SMTP not configured' };

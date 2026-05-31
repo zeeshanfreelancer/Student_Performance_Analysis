@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -42,7 +42,15 @@ export default function LoginPage() {
           {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Password</label>
+          <div className="mb-1 flex items-center justify-between">
+            <label className="text-sm font-medium">Password</label>
+            <Link
+              to="/forgot-password"
+              className="text-sm text-primary-600 hover:underline dark:text-primary-400"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <input
             type="password"
             className="input-field"

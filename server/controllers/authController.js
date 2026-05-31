@@ -1,6 +1,8 @@
+import crypto from 'crypto';
 import User from '../models/User.js';
 import { AppError } from '../utils/AppError.js';
 import { catchAsync } from '../utils/catchAsync.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 import {
   signAccessToken,
   signRefreshToken,
@@ -108,6 +110,88 @@ export const updateProfile = catchAsync(async (req, res) => {
   await logActivity(req.user._id, 'UPDATE_PROFILE', { resource: 'User', resourceId: user._id });
 
   res.json({ success: true, data: { user: sanitizeUser(user) } });
+});
+
+const hashResetToken = (token) =>
+  crypto.createHash('sha256').update(token).digest('hex');
+
+const getResetTokenExpiry = () => {
+  const minutes = parseInt(process.env.PASSWORD_RESET_EXPIRES_MINUTES || '60', 10);
+  return Date.now() + minutes * 60 * 1000;
+};
+
+export const forgotPassword = catchAsync(async (req, res) => {
+  const email = req.body.email?.toLowerCase().trim();
+  const genericMessage =
+    'If an account exists with this email, a password reset link has been sent.';
+
+  const user = await User.findOne({ email }).select(
+    '+passwordResetToken +passwordResetExpires'
+  );
+
+  if (!user || user.status === 'inactive') {
+    return res.json({ success: true, message: genericMessage });
+  }
+
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  user.passwordResetToken = hashResetToken(resetToken);
+  user.passwordResetExpires = new Date(getResetTokenExpiry());
+  await user.save({ validateBeforeSave: false });
+
+  const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const resetUrl = `${clientUrl}/reset-password?token=${resetToken}`;
+
+  const emailResult = await sendPasswordResetEmail({
+    name: user.name,
+    email: user.email,
+    resetUrl,
+  });
+
+  if (!emailResult.sent) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    throw new AppError(
+      emailResult.skipped
+        ? 'Password reset email is not configured. Please contact your administrator.'
+        : 'Could not send reset email. Please try again later.',
+      emailResult.skipped ? 503 : 500
+    );
+  }
+
+  res.json({ success: true, message: genericMessage });
+});
+
+export const resetPassword = catchAsync(async (req, res) => {
+  const { token, password } = req.body;
+  const hashedToken = hashResetToken(token);
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  }).select('+password +passwordResetToken +passwordResetExpires +refreshToken');
+
+  if (!user) {
+    throw new AppError('Password reset link is invalid or has expired', 400);
+  }
+
+  if (user.status === 'inactive') {
+    throw new AppError('This account is inactive. Contact your administrator.', 403);
+  }
+
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  user.refreshToken = null;
+  await user.save();
+
+  await logActivity(user._id, 'RESET_PASSWORD', { resource: 'User', ip: req.ip });
+
+  res.json({
+    success: true,
+    message: 'Password reset successful. You can sign in with your new password.',
+  });
 });
 
 export const changePassword = catchAsync(async (req, res) => {

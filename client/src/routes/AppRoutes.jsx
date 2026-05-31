@@ -4,6 +4,8 @@ import ProtectedRoute from './ProtectedRoute';
 import AuthLayout from '../layouts/AuthLayout';
 import DashboardLayout from '../layouts/DashboardLayout';
 import LoginPage from '../pages/auth/LoginPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import StudentsPage from '../pages/admin/StudentsPage';
 import ClassesPage from '../pages/admin/ClassesPage';
@@ -102,6 +104,8 @@ export default function AppRoutes() {
       <Route path="/" element={<RoleRedirect />} />
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/register" element={<Navigate to="/login" replace />} />
       </Route>
       <Route path="/admin/*" element={<ProtectedRoute roles={['admin']}><DashboardLayout /></ProtectedRoute>}>

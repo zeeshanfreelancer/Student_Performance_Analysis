@@ -28,6 +28,8 @@ const userSchema = new mongoose.Schema(
     gender: { type: String, enum: ['male', 'female', 'other', ''], default: '' },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     refreshToken: { type: String, select: false },
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
     lastLogin: { type: Date },
   },
   { timestamps: true }

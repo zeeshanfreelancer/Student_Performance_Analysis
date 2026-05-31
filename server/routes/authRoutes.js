@@ -6,11 +6,15 @@ import { validate } from '../middleware/validateMiddleware.js';
 import {
   loginValidation,
   changePasswordValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation,
 } from '../validations/authValidation.js';
 
 const router = Router();
 
 router.post('/login', loginValidation, validate, authController.login);
+router.post('/forgot-password', forgotPasswordValidation, validate, authController.forgotPassword);
+router.post('/reset-password', resetPasswordValidation, validate, authController.resetPassword);
 router.post('/refresh-token', authController.refreshToken);
 router.post('/logout', protect, authController.logout);
 router.get('/me', protect, authController.getMe);

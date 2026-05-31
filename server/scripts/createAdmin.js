@@ -21,7 +21,7 @@ const run = async () => {
 
   if (!email || !password) {
     console.log(`
-Create an admin account for School ERP
+Create an admin account for Student performance Analysis
 
 Usage:
   npm run create-admin -- --email=admin@school.com --password=YourPassword123 --name="Admin User"

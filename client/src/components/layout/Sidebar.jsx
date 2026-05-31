@@ -44,7 +44,7 @@ function SidebarContent({ collapsed, showClose, onClose }) {
         </div>
         {!collapsed && (
           <span className="truncate text-lg font-bold text-gray-900 dark:text-white">
-            School ERP
+            SPA
           </span>
         )}
         {showClose && (

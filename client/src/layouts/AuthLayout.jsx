@@ -10,7 +10,7 @@ export default function AuthLayout() {
           animate={{ opacity: 1, x: 0 }}
           className="text-white"
         >
-          <h1 className="text-4xl font-bold">School ERP</h1>
+          <h1 className="text-4xl font-bold">School Performance Analysis</h1>
           <p className="mt-4 text-lg text-primary-100">
             Complete student management, attendance tracking, analytics, and parent portal in one platform.
           </p>
