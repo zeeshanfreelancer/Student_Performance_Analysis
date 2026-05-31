@@ -11,6 +11,7 @@ import { catchAsync } from '../utils/catchAsync.js';
 import { APIFeatures } from '../utils/apiFeatures.js';
 import { uploadToCloudinary } from '../services/cloudinaryService.js';
 import { logActivity } from '../services/activityLogService.js';
+import { sendAccountCredentialsEmail } from '../services/emailService.js';
 import { getSubjectWiseMarks } from '../services/analyticsService.js';
 
 export const createStudent = catchAsync(async (req, res) => {
@@ -33,8 +34,9 @@ export const createStudent = catchAsync(async (req, res) => {
     if (!classId) classId = teacher.classes[0];
   }
 
+  const plainPassword = password || 'Student@123';
   const user = await User.create({
-    name, email, password: password || 'Student@123', role: 'student', phone, gender,
+    name, email, password: plainPassword, role: 'student', phone, gender,
   });
 
   let profileImage = '';
@@ -72,7 +74,20 @@ export const createStudent = catchAsync(async (req, res) => {
     .populate('department', 'name')
     .populate('parentId');
 
-  res.status(201).json({ success: true, data: { student: populated } });
+  const emailResult = await sendAccountCredentialsEmail({
+    name: user.name,
+    email: user.email,
+    password: plainPassword,
+    role: 'student',
+  });
+
+  res.status(201).json({
+    success: true,
+    message: emailResult.sent
+      ? 'Student created. Login credentials sent to their email.'
+      : 'Student created successfully',
+    data: { student: populated, emailSent: emailResult.sent === true },
+  });
 });
 
 const getTeacherClassIds = async (userId) => {

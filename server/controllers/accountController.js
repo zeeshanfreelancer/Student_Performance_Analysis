@@ -1,5 +1,6 @@
 import { catchAsync } from '../utils/catchAsync.js';
 import { logActivity } from '../services/activityLogService.js';
+import { sendAccountCredentialsEmail } from '../services/emailService.js';
 import {
   assertCanCreateRole,
   createUserAccount,
@@ -45,12 +46,27 @@ export const createAccount = catchAsync(async (req, res) => {
     metadata: { role, createdBy: req.user.role },
   });
 
+  const emailResult = await sendAccountCredentialsEmail({
+    name: user.name,
+    email: user.email,
+    password,
+    role,
+  });
+
+  let message = `${role} account created successfully`;
+  if (emailResult.sent) {
+    message += '. Login credentials sent to their email.';
+  } else if (!emailResult.skipped) {
+    message += '. Account created but the welcome email could not be sent.';
+  }
+
   res.status(201).json({
     success: true,
-    message: `${role} account created successfully`,
+    message,
     data: {
       user: sanitizeUser(user),
       profile: roleProfile,
+      emailSent: emailResult.sent === true,
     },
   });
 });

@@ -48,8 +48,9 @@ export default function CreateAccountModal({ open, onClose, onSuccess, defaultRo
         };
       }
 
-      await accountService.create(payload);
-      toast.success(`${ROLE_LABELS[role] || role} account created`);
+      const { data } = await accountService.create(payload);
+      const msg = data.message || `${ROLE_LABELS[role] || role} account created`;
+      toast.success(msg);
       onSuccess?.();
       onClose();
       reset();

@@ -27,7 +27,7 @@ export default function CreateStudentModal({ open, onClose, onSuccess }) {
   const onSubmit = async (formData) => {
     setLoading(true);
     try {
-      await studentService.create({
+      const { data } = await studentService.create({
         name: formData.name,
         email: formData.email,
         password: formData.password,
@@ -38,7 +38,7 @@ export default function CreateStudentModal({ open, onClose, onSuccess }) {
         fatherName: formData.fatherName || '',
         motherName: formData.motherName || '',
       });
-      toast.success('Student account created');
+      toast.success(data.message || 'Student account created');
       onSuccess?.();
       onClose();
       reset();
