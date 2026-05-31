@@ -11,7 +11,7 @@ const teacherSchema = new mongoose.Schema(
     experience: { type: Number, default: 0 },
     joiningDate: { type: Date, default: Date.now },
     salary: { type: Number },
-    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    status: { type: String, enum: ['active', 'left'], default: 'active' },
   },
   { timestamps: true }
 );

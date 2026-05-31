@@ -6,5 +6,6 @@ const router = Router();
 
 router.use(protect, restrictTo('admin'));
 router.get('/', teacherController.getTeachers);
+router.patch('/:id/status', teacherController.updateTeacherStatus);
 
 export default router;

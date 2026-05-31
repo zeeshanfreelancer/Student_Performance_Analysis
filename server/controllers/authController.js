@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import User from '../models/User.js';
+import Student from '../models/Student.js';
 import { AppError } from '../utils/AppError.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
@@ -42,12 +43,34 @@ export const register = catchAsync(async (req, res) => {
 });
 
 export const login = catchAsync(async (req, res) => {
-  const { email, password, rememberMe } = req.body;
+  const { password, rememberMe } = req.body;
+  const email = req.body.email?.toLowerCase().trim();
+  if (!email) throw new AppError('Email is required', 400);
+
   const user = await User.findOne({ email }).select('+password +refreshToken');
   if (!user || !(await user.comparePassword(password))) {
     throw new AppError('Invalid email or password', 401);
   }
   if (user.status === 'inactive') throw new AppError('Account is inactive', 403);
+
+  if (user.role === 'student') {
+    const studentProfile = await Student.findOne({ user: user._id });
+    if (!studentProfile) {
+      throw new AppError(
+        'Student profile is missing for this account. Ask an administrator to recreate your student record.',
+        403
+      );
+    }
+    if (studentProfile.status !== 'active') {
+      const messages = {
+        completed: 'Your program is completed. Contact administration if you need access.',
+        graduated: 'Your program is completed. Contact administration if you need access.',
+        left: 'This student account is no longer active.',
+        inactive: 'Student account is inactive',
+      };
+      throw new AppError(messages[studentProfile.status] || 'Student account is not active', 403);
+    }
+  }
 
   const refreshToken = signRefreshToken(user._id);
   user.refreshToken = refreshToken;

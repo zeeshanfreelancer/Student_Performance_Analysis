@@ -1,8 +1,10 @@
 import Student from '../models/Student.js';
 import Attendance from '../models/Attendance.js';
 import { catchAsync } from '../utils/catchAsync.js';
-import { exportToExcel, exportToCSV } from '../services/exportService.js';
-import { generateStudentReportPDF } from '../services/pdfService.js';
+import { AppError } from '../utils/AppError.js';
+import { exportToExcel, exportToCSV, exportMonthlyAttendanceExcel } from '../services/exportService.js';
+import { generateStudentReportPDF, generateMonthlyAttendancePDF } from '../services/pdfService.js';
+import { buildMonthlyAttendanceExport } from '../services/monthlyAttendanceExportService.js';
 
 export const exportStudents = catchAsync(async (req, res) => {
   const students = await Student.find()
@@ -67,4 +69,22 @@ export const exportAttendance = catchAsync(async (req, res) => {
   const format = req.query.format || 'excel';
   if (format === 'csv') return exportToCSV(res, data, columns, 'attendance');
   return exportToExcel(res, data, columns, 'attendance');
+});
+
+export const exportMonthlyAttendance = catchAsync(async (req, res) => {
+  const { year, month, class: classId, subject: subjectId } = req.query;
+  const format = (req.query.format || 'excel').toLowerCase();
+
+  if (!['excel', 'pdf'].includes(format)) {
+    throw new AppError('Format must be excel or pdf', 400);
+  }
+
+  const payload = await buildMonthlyAttendanceExport(req.user, { year, month, classId, subjectId });
+  const filename = `attendance-${payload.year}-${String(payload.month).padStart(2, '0')}`;
+
+  if (format === 'pdf') {
+    return generateMonthlyAttendancePDF(res, payload);
+  }
+
+  return exportMonthlyAttendanceExcel(res, payload.sheets, filename);
 });

@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiGrid, FiUsers, FiBook, FiLayers, FiCalendar, FiBarChart2,
-  FiFileText, FiHelpCircle, FiMessageSquare, FiActivity, FiX,
+  FiFileText, FiHelpCircle, FiMessageSquare, FiActivity, FiX, FiBookmark,
 } from 'react-icons/fi';
 import { NAV_ITEMS } from '../../utils/constants';
 import { setMobileMenuOpen } from '../../redux/slices/uiSlice';
@@ -13,6 +13,7 @@ const iconMap = {
   users: FiUsers,
   students: FiBook,
   classes: FiLayers,
+  subjects: FiBookmark,
   attendance: FiCalendar,
   analytics: FiBarChart2,
   assignments: FiFileText,

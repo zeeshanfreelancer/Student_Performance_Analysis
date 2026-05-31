@@ -12,6 +12,7 @@ router.get('/', restrictTo('admin', 'teacher'), studentController.getStudents);
 router.post('/', restrictTo('admin', 'teacher'), upload.single('profileImage'), studentController.createStudent);
 router.get('/:id/profile', studentController.getStudentProfile);
 router.get('/:id', studentController.getStudent);
+router.patch('/:id/status', restrictTo('admin'), studentController.updateStudentStatus);
 router.patch('/:id', restrictTo('admin', 'teacher'), upload.single('profileImage'), studentController.updateStudent);
 router.delete('/:id', restrictTo('admin'), studentController.deleteStudent);
 

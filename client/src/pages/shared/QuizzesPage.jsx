@@ -26,7 +26,9 @@ export default function QuizzesPage() {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const isStudent = user?.role === 'student';
-  const canManage = user?.role === 'admin' || user?.role === 'teacher';
+  const isTeacher = user?.role === 'teacher';
+  const isAdmin = user?.role === 'admin';
+  const canManage = isTeacher;
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -90,7 +92,14 @@ export default function QuizzesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-semibold">Quizzes</h2>
+        <div>
+          <h2 className="text-xl font-semibold">Quizzes</h2>
+          {isAdmin && (
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              View-only overview. Teachers create and publish quizzes for their classes.
+            </p>
+          )}
+        </div>
         {canManage && (
           <button type="button" onClick={() => setCreateOpen(true)} className="btn-primary">
             <FiPlus className="mr-2 inline" /> Create Quiz

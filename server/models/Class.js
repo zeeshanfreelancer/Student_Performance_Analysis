@@ -6,6 +6,7 @@ const classSchema = new mongoose.Schema(
     section: { type: String, default: 'A' },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
     classTeacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' },
+    teachers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' }],
     capacity: { type: Number, default: 40 },
     academicYear: { type: String, required: true },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },

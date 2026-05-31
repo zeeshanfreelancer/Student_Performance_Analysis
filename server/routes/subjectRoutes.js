@@ -4,7 +4,12 @@ import { protect, restrictTo } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-router.use(protect, restrictTo('admin', 'teacher'));
-router.get('/', subjectController.getSubjects);
+router.use(protect);
+
+router.get('/', restrictTo('admin', 'teacher'), subjectController.getSubjects);
+router.post('/', restrictTo('admin'), subjectController.createSubject);
+router.patch('/:id', restrictTo('admin'), subjectController.updateSubject);
+router.delete('/:id', restrictTo('admin'), subjectController.deleteSubject);
+router.patch('/:id/assign-teacher', restrictTo('admin'), subjectController.assignSubjectTeacher);
 
 export default router;

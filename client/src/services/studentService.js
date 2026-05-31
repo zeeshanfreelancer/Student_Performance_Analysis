@@ -12,6 +12,7 @@ export const studentService = {
     api.patch(`/students/${id}`, data, {
       headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {},
     }),
+  updateStatus: (id, status) => api.patch(`/students/${id}/status`, { status }),
   delete: (id) => api.delete(`/students/${id}`),
   advancedSearch: (params) => api.get('/students/search/advanced', { params }),
   export: (format) => api.get(`/export/students?format=${format}`, { responseType: 'blob' }),

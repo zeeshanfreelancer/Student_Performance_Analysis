@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FiAward, FiCalendar, FiBook } from 'react-icons/fi';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -11,6 +12,8 @@ const examLabel = (type) =>
   type ? type.charAt(0).toUpperCase() + type.slice(1) : '—';
 
 export default function ParentGradesPage() {
+  const [searchParams] = useSearchParams();
+  const childFromUrl = searchParams.get('child');
   const [children, setChildren] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [childData, setChildData] = useState(null);
@@ -24,12 +27,13 @@ export default function ParentGradesPage() {
         const list = data.data.children || [];
         setChildren(list);
         if (list.length > 0) {
-          setSelectedId(list[0].student._id);
+          const urlMatch = childFromUrl && list.find((c) => c.student._id === childFromUrl);
+          setSelectedId(urlMatch ? childFromUrl : list[0].student._id);
         }
       })
       .catch(() => toast.error('Failed to load children'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [childFromUrl]);
 
   const loadChildGrades = useCallback(async (childId) => {
     if (!childId) return;

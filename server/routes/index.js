@@ -7,6 +7,7 @@ import assignmentRoutes from './assignmentRoutes.js';
 import quizRoutes from './quizRoutes.js';
 import analyticsRoutes from './analyticsRoutes.js';
 import parentRoutes from './parentRoutes.js';
+import parentsRoutes from './parentsRoutes.js';
 import chatRoutes from './chatRoutes.js';
 import reportRoutes from './reportRoutes.js';
 import fileRoutes from './fileRoutes.js';
@@ -15,6 +16,7 @@ import accountRoutes from './accountRoutes.js';
 import classRoutes from './classRoutes.js';
 import subjectRoutes from './subjectRoutes.js';
 import teacherRoutes from './teacherRoutes.js';
+import resultRoutes from './resultRoutes.js';
 
 const router = Router();
 
@@ -26,6 +28,7 @@ router.use('/assignments', assignmentRoutes);
 router.use('/quizzes', quizRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/parent', parentRoutes);
+router.use('/parents', parentsRoutes);
 router.use('/chat', chatRoutes);
 router.use('/reports', reportRoutes);
 router.use('/files', fileRoutes);
@@ -34,6 +37,7 @@ router.use('/accounts', accountRoutes);
 router.use('/classes', classRoutes);
 router.use('/subjects', subjectRoutes);
 router.use('/teachers', teacherRoutes);
+router.use('/results', resultRoutes);
 
 router.get('/health', (req, res) => {
   res.json({ success: true, message: 'School ERP API is running' });

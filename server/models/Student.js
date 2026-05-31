@@ -27,7 +27,7 @@ const studentSchema = new mongoose.Schema(
     attendancePercentage: { type: Number, default: 0, min: 0, max: 100 },
     gpa: { type: Number, default: 0, min: 0, max: 4 },
     enrollmentDate: { type: Date, default: Date.now },
-    status: { type: String, enum: ['active', 'inactive', 'graduated'], default: 'active' },
+    status: { type: String, enum: ['active', 'completed', 'left', 'graduated'], default: 'active' },
     academicTimeline: [
       {
         title: String,

@@ -14,7 +14,11 @@ export default function LoginPage() {
 
   const onSubmit = async (data) => {
     try {
-      const result = await login({ ...data, rememberMe });
+      const result = await login({
+        ...data,
+        email: data.email.trim().toLowerCase(),
+        rememberMe,
+      });
       if (result.meta.requestStatus === 'fulfilled') {
         toast.success('Welcome back!');
         navigate(getDashboardPath(result.payload.role));

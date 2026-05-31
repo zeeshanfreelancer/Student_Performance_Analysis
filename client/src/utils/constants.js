@@ -19,24 +19,37 @@ export const ATTENDANCE_STATUS = {
   leave: { label: 'Leave', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
 };
 
+export const STUDENT_STATUS = {
+  active: { label: 'Active', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  completed: { label: 'Completed', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+  left: { label: 'Left', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
+  graduated: { label: 'Completed', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+};
+
+export const TEACHER_STATUS = {
+  active: { label: 'Active', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  left: { label: 'Left', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
+};
+
 export const NAV_ITEMS = {
   admin: [
     { path: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/admin/users', label: 'Users', icon: 'users' },
+    { path: '/admin/teachers', label: 'Teachers', icon: 'users' },
+    { path: '/admin/parents', label: 'Parents', icon: 'users' },
     { path: '/admin/classes', label: 'Classes', icon: 'classes' },
+    { path: '/admin/subjects', label: 'Subjects', icon: 'subjects' },
     { path: '/admin/students', label: 'Students', icon: 'students' },
     { path: '/admin/attendance', label: 'Attendance', icon: 'attendance' },
     { path: '/admin/analytics', label: 'Analytics', icon: 'analytics' },
-    { path: '/admin/assignments', label: 'Assignments', icon: 'assignments' },
-    { path: '/admin/quizzes', label: 'Quizzes', icon: 'quizzes' },
     { path: '/admin/chat', label: 'Messages', icon: 'chat' },
-    { path: '/admin/reports', label: 'Reports', icon: 'reports' },
     { path: '/admin/activity', label: 'Activity Logs', icon: 'activity' },
   ],
   teacher: [
     { path: '/teacher/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/teacher/students', label: 'Students', icon: 'students' },
-    { path: '/teacher/attendance', label: 'Attendance', icon: 'attendance' },
+    { path: '/teacher/attendance', label: 'Take Attendance', icon: 'attendance' },
+    { path: '/teacher/marks', label: 'Subject Marks', icon: 'grades' },
     { path: '/teacher/assignments', label: 'Assignments', icon: 'assignments' },
     { path: '/teacher/quizzes', label: 'Quizzes', icon: 'quizzes' },
     { path: '/teacher/analytics', label: 'Analytics', icon: 'analytics' },

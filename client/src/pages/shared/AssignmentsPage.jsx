@@ -29,8 +29,10 @@ const statusBadge = (status) => {
 export default function AssignmentsPage() {
   const { user } = useSelector((state) => state.auth);
   const isStudent = user?.role === 'student';
-  const canCreate = user?.role === 'admin' || user?.role === 'teacher';
-  const canViewDetails = canCreate;
+  const isTeacher = user?.role === 'teacher';
+  const isAdmin = user?.role === 'admin';
+  const canCreate = isTeacher;
+  const canViewDetails = isTeacher || isAdmin;
 
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,14 @@ export default function AssignmentsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-semibold">Assignments</h2>
+        <div>
+          <h2 className="text-xl font-semibold">Assignments</h2>
+          {isAdmin && (
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              View-only overview. Teachers create and manage assignments for their classes.
+            </p>
+          )}
+        </div>
         {canCreate && (
           <button type="button" onClick={() => setCreateOpen(true)} className="btn-primary">
             <FiPlus className="mr-2 inline" /> Create Assignment

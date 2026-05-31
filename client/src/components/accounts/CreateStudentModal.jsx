@@ -5,12 +5,15 @@ import { FiX } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
 import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
+import { parentService } from '../../services/parentService';
+import { ROLE_LABELS } from '../../utils/constants';
 
 export default function CreateStudentModal({ open, onClose, onSuccess }) {
   const { user } = useSelector((state) => state.auth);
   const isTeacher = user?.role === 'teacher';
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const [classes, setClasses] = useState([]);
+  const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -19,8 +22,14 @@ export default function CreateStudentModal({ open, onClose, onSuccess }) {
       .getAll()
       .then(({ data }) => setClasses(data.data.classes))
       .catch(() => toast.error('Failed to load classes'));
+    if (user?.role === 'admin') {
+      parentService
+        .getAll()
+        .then(({ data }) => setParents(data.data.parents || []))
+        .catch(() => {});
+    }
     reset();
-  }, [open, reset]);
+  }, [open, reset, user?.role]);
 
   if (!open) return null;
 
@@ -29,7 +38,7 @@ export default function CreateStudentModal({ open, onClose, onSuccess }) {
     try {
       const { data } = await studentService.create({
         name: formData.name,
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
         rollNo: formData.rollNo.toUpperCase(),
         class: formData.class,
@@ -37,8 +46,12 @@ export default function CreateStudentModal({ open, onClose, onSuccess }) {
         gender: formData.gender || '',
         fatherName: formData.fatherName || '',
         motherName: formData.motherName || '',
+        parentId: formData.parentId || undefined,
       });
-      toast.success(data.message || 'Student account created');
+      const loginHint = data.data?.login?.email
+        ? ` Login: ${data.data.login.email} (${ROLE_LABELS.student})`
+        : '';
+      toast.success((data.message || 'Student account created') + loginHint);
       onSuccess?.();
       onClose();
       reset();
@@ -117,6 +130,19 @@ export default function CreateStudentModal({ open, onClose, onSuccess }) {
               <label className="mb-1 block text-sm font-medium">Mother Name</label>
               <input className="input-field" {...register('motherName')} />
             </div>
+            {user?.role === 'admin' && parents.length > 0 && (
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-sm font-medium">Link to parent (optional)</label>
+                <select className="input-field" {...register('parentId')}>
+                  <option value="">No parent linked</option>
+                  {parents.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.user?.name} ({p.user?.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">

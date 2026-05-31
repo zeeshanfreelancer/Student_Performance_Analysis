@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const subjectSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    code: { type: String, required: true, unique: true, uppercase: true },
+    code: { type: String, required: true, uppercase: true, trim: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
     teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' },
     class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class' },
@@ -12,5 +12,7 @@ const subjectSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+subjectSchema.index({ class: 1, code: 1 }, { unique: true });
 
 export default mongoose.model('Subject', subjectSchema);

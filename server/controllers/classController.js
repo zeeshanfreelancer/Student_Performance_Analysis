@@ -4,26 +4,20 @@ import Student from '../models/Student.js';
 import { AppError } from '../utils/AppError.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import { logActivity } from '../services/activityLogService.js';
+import {
+  syncClassTeachers,
+  populateClass,
+  normalizeClassTeachers,
+  getEffectiveTeacherIds,
+} from '../services/classTeacherService.js';
 
-const syncTeacherClassAssignment = async (classId, teacherId) => {
-  if (!teacherId) return;
-
-  const teacher = await Teacher.findById(teacherId);
-  if (!teacher) throw new AppError('Teacher not found', 404);
-
-  const classIdStr = classId.toString();
-  const previous = await Class.findById(classId).select('classTeacher');
-
-  if (previous?.classTeacher && previous.classTeacher.toString() !== teacherId.toString()) {
-    await Teacher.findByIdAndUpdate(previous.classTeacher, {
-      $pull: { classes: classId },
-    });
+const resolveTeacherIds = (body) => {
+  if (Array.isArray(body.teacherIds) && body.teacherIds.length) {
+    return body.teacherIds;
   }
-
-  await Class.findByIdAndUpdate(classId, { classTeacher: teacherId });
-  await Teacher.findByIdAndUpdate(teacherId, {
-    $addToSet: { classes: classId },
-  });
+  if (body.classTeacher) return [body.classTeacher];
+  if (body.teacherId) return [body.teacherId];
+  return [];
 };
 
 export const getClasses = catchAsync(async (req, res) => {
@@ -42,18 +36,11 @@ export const getClasses = catchAsync(async (req, res) => {
     filter.status = 'active';
   }
 
-  const classes = await Class.find(filter)
-    .populate('department', 'name code')
-    .populate({
-      path: 'classTeacher',
-      select: 'employeeId user',
-      populate: { path: 'user', select: 'name email' },
-    })
-    .sort('name section');
+  const classes = await populateClass(Class.find(filter)).sort('name section');
 
   const withCounts = await Promise.all(
     classes.map(async (c) => {
-      const doc = c.toObject();
+      const doc = normalizeClassTeachers(c);
       doc.studentCount = await Student.countDocuments({ class: c._id, status: 'active' });
       return doc;
     })
@@ -63,7 +50,8 @@ export const getClasses = catchAsync(async (req, res) => {
 });
 
 export const createClass = catchAsync(async (req, res) => {
-  const { name, section, academicYear, department, capacity, classTeacher } = req.body;
+  const { name, section, academicYear, department, capacity } = req.body;
+  const teacherIds = resolveTeacherIds(req.body);
 
   if (!name?.trim() || !academicYear?.trim()) {
     throw new AppError('Class name and academic year are required', 400);
@@ -82,22 +70,16 @@ export const createClass = catchAsync(async (req, res) => {
     academicYear: academicYear.trim(),
     department: department || undefined,
     capacity: capacity || 40,
-    classTeacher: classTeacher || undefined,
     status: 'active',
   });
 
-  if (classTeacher) {
-    await syncTeacherClassAssignment(classDoc._id, classTeacher);
+  if (teacherIds.length) {
+    await syncClassTeachers(classDoc._id, teacherIds);
   }
 
   await logActivity(req.user._id, 'CREATE_CLASS', { resource: 'Class', resourceId: classDoc._id });
 
-  const populated = await Class.findById(classDoc._id)
-    .populate('department', 'name code')
-    .populate({
-      path: 'classTeacher',
-      populate: { path: 'user', select: 'name email' },
-    });
+  const populated = normalizeClassTeachers(await populateClass(Class.findById(classDoc._id)));
 
   res.status(201).json({ success: true, data: { class: populated } });
 });
@@ -106,7 +88,11 @@ export const updateClass = catchAsync(async (req, res) => {
   const classDoc = await Class.findById(req.params.id);
   if (!classDoc) throw new AppError('Class not found', 404);
 
-  const { name, section, academicYear, department, capacity, status, classTeacher } = req.body;
+  const { name, section, academicYear, department, capacity, status } = req.body;
+  const hasTeacherUpdate =
+    req.body.teacherIds !== undefined ||
+    req.body.classTeacher !== undefined ||
+    req.body.teacherId !== undefined;
 
   if (name !== undefined) classDoc.name = name.trim();
   if (section !== undefined) classDoc.section = section.trim();
@@ -117,50 +103,33 @@ export const updateClass = catchAsync(async (req, res) => {
 
   await classDoc.save();
 
-  if (classTeacher !== undefined) {
-    if (classTeacher) {
-      await syncTeacherClassAssignment(classDoc._id, classTeacher);
-    } else {
-      if (classDoc.classTeacher) {
-        await Teacher.findByIdAndUpdate(classDoc.classTeacher, {
-          $pull: { classes: classDoc._id },
-        });
-      }
-      classDoc.classTeacher = undefined;
-      await classDoc.save();
-    }
+  if (hasTeacherUpdate) {
+    const teacherIds = resolveTeacherIds(req.body);
+    await syncClassTeachers(classDoc._id, teacherIds);
   }
 
-  const populated = await Class.findById(classDoc._id)
-    .populate('department', 'name code')
-    .populate({
-      path: 'classTeacher',
-      populate: { path: 'user', select: 'name email' },
-    });
+  const populated = normalizeClassTeachers(await populateClass(Class.findById(classDoc._id)));
 
   res.json({ success: true, data: { class: populated } });
 });
 
 export const assignTeacher = catchAsync(async (req, res) => {
-  const { teacherId } = req.body;
-  if (!teacherId) throw new AppError('Teacher is required', 400);
+  const teacherIds = resolveTeacherIds(req.body);
+  if (!teacherIds.length) {
+    throw new AppError('Select at least one teacher', 400);
+  }
 
   const classDoc = await Class.findById(req.params.id);
   if (!classDoc) throw new AppError('Class not found', 404);
 
-  await syncTeacherClassAssignment(classDoc._id, teacherId);
+  await syncClassTeachers(classDoc._id, teacherIds);
 
-  const populated = await Class.findById(classDoc._id)
-    .populate('department', 'name code')
-    .populate({
-      path: 'classTeacher',
-      populate: { path: 'user', select: 'name email' },
-    });
+  const populated = normalizeClassTeachers(await populateClass(Class.findById(classDoc._id)));
 
-  await logActivity(req.user._id, 'ASSIGN_CLASS_TEACHER', {
+  await logActivity(req.user._id, 'ASSIGN_CLASS_TEACHERS', {
     resource: 'Class',
     resourceId: classDoc._id,
-    teacherId,
+    metadata: { teacherIds },
   });
 
   res.json({ success: true, data: { class: populated } });
@@ -175,11 +144,12 @@ export const deleteClass = catchAsync(async (req, res) => {
     throw new AppError('Cannot delete a class that has students. Set status to inactive instead.', 400);
   }
 
-  if (classDoc.classTeacher) {
-    await Teacher.findByIdAndUpdate(classDoc.classTeacher, {
-      $pull: { classes: classDoc._id },
-    });
-  }
+  const teacherIds = getEffectiveTeacherIds(classDoc);
+  await Promise.all(
+    teacherIds.map((tid) =>
+      Teacher.findByIdAndUpdate(tid, { $pull: { classes: classDoc._id } })
+    )
+  );
 
   await Class.findByIdAndDelete(classDoc._id);
   await logActivity(req.user._id, 'DELETE_CLASS', { resource: 'Class', resourceId: classDoc._id });

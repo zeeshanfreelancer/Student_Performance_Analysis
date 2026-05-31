@@ -12,6 +12,9 @@ import {
   getAttendanceTrends,
   getSubjectWiseMarks,
 } from '../services/analyticsService.js';
+import { assertParentOwnsStudent } from '../services/parentLinkService.js';
+import { getStudentEnrollmentStart, calcAttendancePercentage } from '../services/attendanceService.js';
+import { calcSubjectPassStatus, PASS_MARK_THRESHOLD } from '../utils/subjectMarks.js';
 
 const getTeacherScope = async (userId) => {
   const teacher = await Teacher.findOne({ user: userId }).select('_id classes');
@@ -207,9 +210,12 @@ export const getPerformanceAnalytics = catchAsync(async (req, res) => {
   });
 });
 
-const getStudentAttendanceTrends = async (studentId, months = 6) => {
-  const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - months);
+const getStudentAttendanceTrends = async (studentId, enrolledFrom) => {
+  const startDate = enrolledFrom ? new Date(enrolledFrom) : new Date();
+  if (!enrolledFrom) {
+    startDate.setMonth(startDate.getMonth() - 6);
+  }
+  startDate.setHours(0, 0, 0, 0);
 
   return Attendance.aggregate([
     { $match: { student: studentId, date: { $gte: startDate } } },
@@ -237,24 +243,45 @@ export const getMyAnalytics = catchAsync(async (req, res) => {
 
   if (!student) throw new AppError('Student profile not found', 404);
 
+  const enrolledFrom = getStudentEnrollmentStart(student);
+  const attendanceFilter = { student: student._id, date: { $gte: enrolledFrom } };
+
   const [attendance, results, subjectMarks, attendanceTrends] = await Promise.all([
-    Attendance.find({ student: student._id }).sort('-date').limit(30),
+    Attendance.find(attendanceFilter).sort('-date'),
     Result.find({ student: student._id })
       .populate('subject', 'name code')
       .sort('-createdAt'),
     getSubjectWiseMarks(student._id),
-    getStudentAttendanceTrends(student._id),
+    getStudentAttendanceTrends(student._id, enrolledFrom),
   ]);
+
+  const attendancePercentage = calcAttendancePercentage(attendance);
+  const studentPayload = student.toObject ? student.toObject() : { ...student };
+  studentPayload.attendancePercentage = attendancePercentage;
+
+  const subjectResults = results
+    .filter((r) => r.examType === 'subject')
+    .map((r) => {
+      const obj = r.toObject ? r.toObject() : { ...r };
+      return {
+        ...obj,
+        passStatus:
+          r.passed === true ? 'pass' : r.passed === false ? 'fail' : calcSubjectPassStatus(r.marks),
+      };
+    });
 
   res.json({
     success: true,
     data: {
-      student,
+      student: studentPayload,
       attendance,
       results,
+      subjectResults,
+      passThreshold: PASS_MARK_THRESHOLD,
       subjectMarks,
       attendanceTrends,
       academicTimeline: student.academicTimeline,
+      enrollmentDate: enrolledFrom,
     },
   });
 });
@@ -268,6 +295,8 @@ export const getStudentAnalytics = catchAsync(async (req, res) => {
     if (!own || own._id.toString() !== student._id.toString()) {
       throw new AppError('You can only view your own analytics', 403);
     }
+  } else if (req.user.role === 'parent') {
+    await assertParentOwnsStudent(req.user._id, student._id);
   } else if (req.user.role === 'teacher') {
     const scope = await getTeacherScope(req.user._id);
     if (!scope.classIds.some((id) => id.toString() === student.class.toString())) {
@@ -277,8 +306,8 @@ export const getStudentAnalytics = catchAsync(async (req, res) => {
 
   const [subjectMarks, attendance, attendanceTrends] = await Promise.all([
     getSubjectWiseMarks(student._id),
-    Attendance.find({ student: student._id }).sort('-date').limit(30),
-    getStudentAttendanceTrends(student._id),
+    Attendance.find({ student: student._id, date: { $gte: getStudentEnrollmentStart(student) } }).sort('-date'),
+    getStudentAttendanceTrends(student._id, getStudentEnrollmentStart(student)),
   ]);
 
   res.json({

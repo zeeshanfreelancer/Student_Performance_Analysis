@@ -15,15 +15,27 @@ export default function CreateClassModal({ open, onClose, onSuccess }) {
     defaultValues: { section: 'A', academicYear: currentYear(), capacity: 40 },
   });
   const [teachers, setTeachers] = useState([]);
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     reset({ section: 'A', academicYear: currentYear(), capacity: 40 });
-    teacherService.getAll().then(({ data }) => setTeachers(data.data.teachers)).catch(() => {});
+    setSelectedTeacherIds([]);
+    teacherService
+      .getAll({ all: 'true' })
+      .then(({ data }) => setTeachers(data.data.teachers || []))
+      .catch(() => {});
   }, [open, reset]);
 
   if (!open) return null;
+
+  const toggleTeacher = (id) => {
+    const sid = id.toString();
+    setSelectedTeacherIds((prev) =>
+      prev.includes(sid) ? prev.filter((x) => x !== sid) : [...prev, sid]
+    );
+  };
 
   const onSubmit = async (formData) => {
     setLoading(true);
@@ -33,7 +45,7 @@ export default function CreateClassModal({ open, onClose, onSuccess }) {
         section: formData.section.trim(),
         academicYear: formData.academicYear.trim(),
         capacity: Number(formData.capacity) || 40,
-        classTeacher: formData.classTeacher || undefined,
+        teacherIds: selectedTeacherIds,
       });
       toast.success('Class created');
       onSuccess?.();
@@ -48,7 +60,7 @@ export default function CreateClassModal({ open, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Add Class</h3>
           <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -80,15 +92,26 @@ export default function CreateClassModal({ open, onClose, onSuccess }) {
             <input type="number" min={1} className="input-field" {...register('capacity')} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">Assign teacher (optional)</label>
-            <select className="input-field" {...register('classTeacher')}>
-              <option value="">— None —</option>
-              {teachers.map((t) => (
-                <option key={t._id} value={t._id}>
-                  {t.user?.name} ({t.employeeId})
-                </option>
-              ))}
-            </select>
+            <label className="mb-1 block text-sm font-medium">Assign teachers (optional)</label>
+            <p className="mb-2 text-xs text-gray-500">Select one or more teachers for this class.</p>
+            {teachers.length === 0 ? (
+              <p className="text-sm text-gray-500">No teachers yet.</p>
+            ) : (
+              <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700">
+                {teachers.map((t) => (
+                  <li key={t._id}>
+                    <label className="flex cursor-pointer items-center gap-2 rounded p-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <input
+                        type="checkbox"
+                        checked={selectedTeacherIds.includes(t._id.toString())}
+                        onChange={() => toggleTeacher(t._id)}
+                      />
+                      {t.user?.name} ({t.employeeId})
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>

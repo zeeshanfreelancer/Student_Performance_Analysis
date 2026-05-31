@@ -5,12 +5,15 @@ import { FiX } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
 import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
+import { parentService } from '../../services/parentService';
 
 export default function EditStudentModal({ open, student, onClose, onSuccess }) {
   const { user } = useSelector((state) => state.auth);
   const isTeacher = user?.role === 'teacher';
+  const isAdmin = user?.role === 'admin';
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const [classes, setClasses] = useState([]);
+  const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -22,12 +25,20 @@ export default function EditStudentModal({ open, student, onClose, onSuccess }) 
       phone: student.user?.phone || '',
       fatherName: student.fatherName || '',
       motherName: student.motherName || '',
+      parentId: student.parentId?._id || student.parentId || '',
+      status: student.status === 'graduated' ? 'completed' : (student.status || 'active'),
     });
     classService
       .getAll()
       .then(({ data }) => setClasses(data.data.classes || []))
       .catch(() => toast.error('Failed to load classes'));
-  }, [open, student, reset]);
+    if (user?.role === 'admin') {
+      parentService
+        .getAll()
+        .then(({ data }) => setParents(data.data.parents || []))
+        .catch(() => {});
+    }
+  }, [open, student, reset, user?.role]);
 
   if (!open || !student) return null;
 
@@ -47,8 +58,12 @@ export default function EditStudentModal({ open, student, onClose, onSuccess }) 
             phone: formData.phone || '',
             fatherName: formData.fatherName || '',
             motherName: formData.motherName || '',
+            parentId: formData.parentId || null,
           };
       await studentService.update(student._id, payload);
+      if (isAdmin && formData.status && formData.status !== (student.status === 'graduated' ? 'completed' : student.status)) {
+        await studentService.updateStatus(student._id, formData.status);
+      }
       toast.success('Student updated');
       onSuccess?.();
       onClose();
@@ -124,6 +139,32 @@ export default function EditStudentModal({ open, student, onClose, onSuccess }) 
                 <label className="mb-1 block text-sm font-medium">Mother name</label>
                 <input className="input-field" {...register('motherName')} />
               </div>
+              {isAdmin && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Enrollment status</label>
+                  <select className="input-field" {...register('status')}>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="left">Left</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Completed or left students cannot log in.
+                  </p>
+                </div>
+              )}
+              {isAdmin && (
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm font-medium">Linked parent</label>
+                  <select className="input-field" {...register('parentId')}>
+                    <option value="">No parent</option>
+                    {parents.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.user?.name} ({p.user?.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </>
           )}
 

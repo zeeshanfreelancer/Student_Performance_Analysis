@@ -11,31 +11,48 @@ import { teacherService } from '../../services/teacherService';
 export default function CreateAssignmentModal({ open, onClose, onSuccess }) {
   const { user } = useSelector((state) => state.auth);
   const isAdmin = user?.role === 'admin';
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm();
+  const isTeacher = user?.role === 'teacher';
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm();
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const selectedClass = watch('class');
+  const selectedSubject = watch('subject');
 
   useEffect(() => {
     if (!open) return;
     reset();
     setFiles([]);
-    classService.getAll().then(({ data }) => setClasses(data.data.classes)).catch(() => {});
-    if (isAdmin) {
-      teacherService.getAll().then(({ data }) => setTeachers(data.data.teachers)).catch(() => {});
+    if (isTeacher) {
+      subjectService
+        .getAll()
+        .then(({ data }) => setSubjects(data.data.subjects || []))
+        .catch(() => setSubjects([]));
+    } else {
+      classService.getAll().then(({ data }) => setClasses(data.data.classes)).catch(() => {});
+      if (isAdmin) {
+        teacherService.getAll().then(({ data }) => setTeachers(data.data.teachers)).catch(() => {});
+      }
     }
-  }, [open, isAdmin, reset]);
+  }, [open, isAdmin, isTeacher, reset]);
 
   useEffect(() => {
-    if (!selectedClass) {
-      setSubjects([]);
+    if (isTeacher || !selectedClass) {
+      if (!isTeacher) setSubjects([]);
       return;
     }
     subjectService.getAll({ class: selectedClass }).then(({ data }) => setSubjects(data.data.subjects)).catch(() => setSubjects([]));
-  }, [selectedClass]);
+  }, [selectedClass, isTeacher]);
+
+  useEffect(() => {
+    if (!isTeacher || !selectedSubject) return;
+    const subject = subjects.find((s) => s._id === selectedSubject);
+    if (subject?.class?._id) {
+      setValue('class', subject.class._id);
+    }
+  }, [selectedSubject, subjects, isTeacher, setValue]);
 
   if (!open) return null;
 
@@ -61,6 +78,11 @@ export default function CreateAssignmentModal({ open, onClose, onSuccess }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const subjectLabel = (s) => {
+    const cls = s.class ? `${s.class.name} ${s.class.section || ''}`.trim() : '';
+    return cls ? `${s.name} (${cls})` : s.name;
   };
 
   return (
@@ -100,28 +122,45 @@ export default function CreateAssignmentModal({ open, onClose, onSuccess }) {
             <textarea className="input-field min-h-[80px]" {...register('description')} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          {isTeacher ? (
             <div>
-              <label className="mb-1 block text-sm font-medium">Class</label>
-              <select className="input-field" {...register('class', { required: true })}>
-                <option value="">Select class</option>
-                {classes.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name} {c.section} ({c.academicYear})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Subject (optional)</label>
-              <select className="input-field" {...register('subject')}>
-                <option value="">—</option>
+              <label className="mb-1 block text-sm font-medium">Subject</label>
+              <select className="input-field" {...register('subject', { required: 'Subject is required' })}>
+                <option value="">Select your subject</option>
                 {subjects.map((s) => (
-                  <option key={s._id} value={s._id}>{s.name}</option>
+                  <option key={s._id} value={s._id}>{subjectLabel(s)}</option>
                 ))}
               </select>
+              {errors.subject && <p className="mt-1 text-sm text-red-500">{errors.subject.message}</p>}
+              {!subjects.length && (
+                <p className="mt-1 text-xs text-amber-600">No subjects assigned yet. Ask admin to assign subjects to you.</p>
+              )}
+              <input type="hidden" {...register('class', { required: true })} />
             </div>
-          </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Class</label>
+                <select className="input-field" {...register('class', { required: true })}>
+                  <option value="">Select class</option>
+                  {classes.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} {c.section} ({c.academicYear})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Subject (optional)</label>
+                <select className="input-field" {...register('subject')}>
+                  <option value="">—</option>
+                  {subjects.map((s) => (
+                    <option key={s._id} value={s._id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>

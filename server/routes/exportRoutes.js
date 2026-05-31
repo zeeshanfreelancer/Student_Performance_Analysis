@@ -7,5 +7,6 @@ router.use(protect, restrictTo('admin', 'teacher'));
 
 router.get('/students', exportController.exportStudents);
 router.get('/attendance', exportController.exportAttendance);
+router.get('/attendance/monthly', exportController.exportMonthlyAttendance);
 
 export default router;

@@ -53,7 +53,7 @@ const seed = async () => {
       { name: 'English', code: 'ENG10' },
     ].map((s) =>
       Subject.findOneAndUpdate(
-        { code: s.code },
+        { class: class10._id, code: s.code },
         { ...s, department: dept._id, class: class10._id, credits: 3, status: 'active' },
         { upsert: true, new: true }
       )
@@ -85,13 +85,15 @@ const seed = async () => {
       status: 'active',
     });
     console.log('  Created teacher profile');
-  } else if (!teacher.classes?.length) {
-    teacher.classes = [class10._id];
+  } else {
+    teacher.subjects = subjects.map((s) => s._id);
+    if (!teacher.classes?.length) teacher.classes = [class10._id];
     await teacher.save();
   }
 
-  await Class.findByIdAndUpdate(class10._id, { classTeacher: teacher._id });
-  await Teacher.findByIdAndUpdate(teacher._id, { $addToSet: { classes: class10._id } });
+  await Teacher.findByIdAndUpdate(teacher._id, {
+    $addToSet: { classes: class10._id, subjects: { $each: subjects.map((s) => s._id) } },
+  });
   await Subject.updateMany({ _id: { $in: subjects.map((s) => s._id) } }, { teacher: teacher._id });
 
   const parentUser = await ensureUser({

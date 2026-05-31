@@ -5,9 +5,9 @@ import { protect, restrictTo } from '../middleware/authMiddleware.js';
 const router = Router();
 router.use(protect);
 
-router.post('/mark', restrictTo('admin', 'teacher'), attendanceController.markAttendance);
+router.post('/mark', restrictTo('teacher'), attendanceController.markAttendance);
 router.get('/analytics', attendanceController.getAttendanceAnalytics);
-router.get('/class/:classId', restrictTo('admin', 'teacher'), attendanceController.getAttendanceByClass);
+router.get('/subject/:subjectId', restrictTo('teacher'), attendanceController.getAttendanceBySubject);
 router.get('/student/:studentId', attendanceController.getStudentAttendance);
 
 export default router;

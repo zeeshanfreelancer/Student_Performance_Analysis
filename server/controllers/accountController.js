@@ -7,6 +7,7 @@ import {
   createTeacherProfile,
   createParentProfile,
 } from '../services/accountService.js';
+import { syncParentChildren } from '../services/parentLinkService.js';
 
 const sanitizeUser = (user) => ({
   _id: user._id,
@@ -38,6 +39,9 @@ export const createAccount = catchAsync(async (req, res) => {
     roleProfile = await createTeacherProfile(user._id, profile);
   } else if (role === 'parent') {
     roleProfile = await createParentProfile(user._id, profile);
+    if (profile.children?.length) {
+      roleProfile = await syncParentChildren(roleProfile._id, profile.children);
+    }
   }
 
   await logActivity(req.user._id, 'CREATE_ACCOUNT', {

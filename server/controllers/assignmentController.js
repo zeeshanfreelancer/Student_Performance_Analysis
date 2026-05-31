@@ -7,18 +7,12 @@ import { uploadToCloudinary } from '../services/cloudinaryService.js';
 import { logActivity } from '../services/activityLogService.js';
 
 const resolveTeacherId = async (req) => {
-  if (req.user.role === 'teacher') {
-    const teacher = await Teacher.findOne({ user: req.user._id });
-    if (!teacher) throw new AppError('Teacher profile not found', 404);
-    return teacher;
+  if (req.user.role !== 'teacher') {
+    throw new AppError('Only teachers can manage assignments', 403);
   }
-  if (req.user.role === 'admin') {
-    if (!req.body.teacher) throw new AppError('Teacher is required', 400);
-    const teacher = await Teacher.findById(req.body.teacher);
-    if (!teacher) throw new AppError('Teacher not found', 404);
-    return teacher;
-  }
-  throw new AppError('You do not have permission', 403);
+  const teacher = await Teacher.findOne({ user: req.user._id });
+  if (!teacher) throw new AppError('Teacher profile not found', 404);
+  return teacher;
 };
 
 export const createAssignment = catchAsync(async (req, res) => {
@@ -127,11 +121,12 @@ export const updateAssignment = catchAsync(async (req, res) => {
   const assignment = await Assignment.findById(req.params.id);
   if (!assignment) throw new AppError('Assignment not found', 404);
 
-  if (req.user.role === 'teacher') {
-    const teacher = await Teacher.findOne({ user: req.user._id });
-    if (!teacher || assignment.teacher.toString() !== teacher._id.toString()) {
-      throw new AppError('You can only edit your own assignments', 403);
-    }
+  if (req.user.role !== 'teacher') {
+    throw new AppError('Only teachers can edit assignments', 403);
+  }
+  const teacher = await Teacher.findOne({ user: req.user._id });
+  if (!teacher || assignment.teacher.toString() !== teacher._id.toString()) {
+    throw new AppError('You can only edit your own assignments', 403);
   }
 
   const updated = await Assignment.findByIdAndUpdate(req.params.id, req.body, {
@@ -148,11 +143,12 @@ export const deleteAssignment = catchAsync(async (req, res) => {
   const assignment = await Assignment.findById(req.params.id);
   if (!assignment) throw new AppError('Assignment not found', 404);
 
-  if (req.user.role === 'teacher') {
-    const teacher = await Teacher.findOne({ user: req.user._id });
-    if (!teacher || assignment.teacher.toString() !== teacher._id.toString()) {
-      throw new AppError('You can only delete your own assignments', 403);
-    }
+  if (req.user.role !== 'teacher') {
+    throw new AppError('Only teachers can delete assignments', 403);
+  }
+  const teacher = await Teacher.findOne({ user: req.user._id });
+  if (!teacher || assignment.teacher.toString() !== teacher._id.toString()) {
+    throw new AppError('You can only delete your own assignments', 403);
   }
 
   await Assignment.findByIdAndDelete(req.params.id);

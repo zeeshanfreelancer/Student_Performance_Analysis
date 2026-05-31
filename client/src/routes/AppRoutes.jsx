@@ -17,11 +17,17 @@ import AssignmentsPage from '../pages/shared/AssignmentsPage';
 import QuizzesPage from '../pages/shared/QuizzesPage';
 import TakeQuizPage from '../pages/student/TakeQuizPage';
 import UsersPage from '../pages/admin/UsersPage';
+import ParentsPage from '../pages/admin/ParentsPage';
+import TeachersPage from '../pages/admin/TeachersPage';
+import SubjectsPage from '../pages/admin/SubjectsPage';
 import ParentDashboard from '../pages/parent/ParentDashboard';
+import ParentChildrenPage from '../pages/parent/ParentChildrenPage';
 import ParentGradesPage from '../pages/parent/ParentGradesPage';
 import StudentDashboard from '../pages/student/StudentDashboard';
+import StudentProfilePage from '../pages/student/StudentProfilePage';
 import StudentAnalyticsPage from '../pages/student/StudentAnalyticsPage';
 import TeacherDashboard from '../pages/teacher/TeacherDashboard';
+import SubjectMarksPage from '../pages/teacher/SubjectMarksPage';
 import { getDashboardPath } from '../utils/constants';
 
 function RoleRedirect() {
@@ -33,14 +39,14 @@ function RoleRedirect() {
 const adminRoutes = [
   { path: 'dashboard', element: <AdminDashboard /> },
   { path: 'users', element: <UsersPage /> },
+  { path: 'teachers', element: <TeachersPage /> },
+  { path: 'parents', element: <ParentsPage /> },
   { path: 'classes', element: <ClassesPage /> },
+  { path: 'subjects', element: <SubjectsPage /> },
   { path: 'students', element: <StudentsPage /> },
   { path: 'attendance', element: <AttendancePage /> },
   { path: 'analytics', element: <AnalyticsPage /> },
-  { path: 'assignments', element: <AssignmentsPage /> },
-  { path: 'quizzes', element: <QuizzesPage /> },
   { path: 'chat', element: <ChatPage /> },
-  { path: 'reports', element: <AnalyticsPage /> },
   { path: 'activity', element: <UsersPage /> },
   { path: 'profile', element: <ProfilePage /> },
   { path: 'settings', element: <ProfilePage /> },
@@ -50,6 +56,7 @@ const teacherRoutes = [
   { path: 'dashboard', element: <TeacherDashboard /> },
   { path: 'students', element: <StudentsPage /> },
   { path: 'attendance', element: <AttendancePage /> },
+  { path: 'marks', element: <SubjectMarksPage /> },
   { path: 'assignments', element: <AssignmentsPage /> },
   { path: 'quizzes', element: <QuizzesPage /> },
   { path: 'analytics', element: <AnalyticsPage /> },
@@ -60,7 +67,7 @@ const teacherRoutes = [
 
 const studentRoutes = [
   { path: 'dashboard', element: <StudentDashboard /> },
-  { path: 'profile', element: <ProfilePage /> },
+  { path: 'profile', element: <StudentProfilePage /> },
   { path: 'attendance', element: <AttendancePage /> },
   { path: 'assignments', element: <AssignmentsPage /> },
   { path: 'quizzes', element: <QuizzesPage /> },
@@ -72,7 +79,7 @@ const studentRoutes = [
 
 const parentRoutes = [
   { path: 'dashboard', element: <ParentDashboard /> },
-  { path: 'children', element: <ParentDashboard /> },
+  { path: 'children', element: <ParentChildrenPage /> },
   { path: 'attendance', element: <AttendancePage /> },
   { path: 'grades', element: <ParentGradesPage /> },
   { path: 'chat', element: <ChatPage /> },

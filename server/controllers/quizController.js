@@ -15,18 +15,12 @@ const shuffle = (arr) => {
 };
 
 const resolveTeacher = async (req) => {
-  if (req.user.role === 'teacher') {
-    const teacher = await Teacher.findOne({ user: req.user._id });
-    if (!teacher) throw new AppError('Teacher profile not found', 404);
-    return teacher;
+  if (req.user.role !== 'teacher') {
+    throw new AppError('Only teachers can manage quizzes', 403);
   }
-  if (req.user.role === 'admin') {
-    if (!req.body.teacher) throw new AppError('Teacher is required', 400);
-    const teacher = await Teacher.findById(req.body.teacher);
-    if (!teacher) throw new AppError('Teacher not found', 404);
-    return teacher;
-  }
-  throw new AppError('You do not have permission', 403);
+  const teacher = await Teacher.findOne({ user: req.user._id });
+  if (!teacher) throw new AppError('Teacher profile not found', 404);
+  return teacher;
 };
 
 const validateQuestions = (questions) => {
@@ -340,11 +334,12 @@ export const updateQuiz = catchAsync(async (req, res) => {
   const quiz = await Quiz.findById(req.params.id);
   if (!quiz) throw new AppError('Quiz not found', 404);
 
-  if (req.user.role === 'teacher') {
-    const teacher = await Teacher.findOne({ user: req.user._id });
-    if (!teacher || quiz.teacher.toString() !== teacher._id.toString()) {
-      throw new AppError('You can only edit your own quizzes', 403);
-    }
+  if (req.user.role !== 'teacher') {
+    throw new AppError('Only teachers can edit quizzes', 403);
+  }
+  const teacher = await Teacher.findOne({ user: req.user._id });
+  if (!teacher || quiz.teacher.toString() !== teacher._id.toString()) {
+    throw new AppError('You can only edit your own quizzes', 403);
   }
 
   if (req.body.questions) validateQuestions(req.body.questions);
@@ -363,11 +358,12 @@ export const deleteQuiz = catchAsync(async (req, res) => {
   const quiz = await Quiz.findById(req.params.id);
   if (!quiz) throw new AppError('Quiz not found', 404);
 
-  if (req.user.role === 'teacher') {
-    const teacher = await Teacher.findOne({ user: req.user._id });
-    if (!teacher || quiz.teacher.toString() !== teacher._id.toString()) {
-      throw new AppError('You can only delete your own quizzes', 403);
-    }
+  if (req.user.role !== 'teacher') {
+    throw new AppError('Only teachers can delete quizzes', 403);
+  }
+  const teacher = await Teacher.findOne({ user: req.user._id });
+  if (!teacher || quiz.teacher.toString() !== teacher._id.toString()) {
+    throw new AppError('You can only delete your own quizzes', 403);
   }
 
   await Quiz.findByIdAndDelete(req.params.id);
