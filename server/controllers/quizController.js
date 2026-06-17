@@ -184,7 +184,21 @@ export const getQuiz = catchAsync(async (req, res) => {
       } })
     : quiz;
 
-  res.json({ success: true, data: { quiz: data } });
+  let classStudentCount = null;
+  if (req.user.role === 'teacher' || req.user.role === 'admin') {
+    classStudentCount = await Student.countDocuments({
+      class: quiz.class._id,
+      status: 'active',
+    });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      quiz: data,
+      classStudentCount,
+    },
+  });
 });
 
 export const startQuiz = catchAsync(async (req, res) => {

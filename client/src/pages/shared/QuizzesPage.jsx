@@ -80,7 +80,14 @@ export default function QuizzesPage() {
         { key: 'marks', label: 'Marks' },
         { key: 'questions', label: 'Questions', render: (r) => r.questions?.length || 0 },
         { key: 'status', label: 'Status', render: (r) => statusBadge(r.status) },
-        { key: 'attempts', label: 'Attempts', render: (r) => r.attemptCount ?? r.attempts?.length ?? 0 },
+        {
+          key: 'attempts',
+          label: 'Attempts',
+          render: (r) => {
+            const count = r.attemptCount ?? r.attempts?.length ?? 0;
+            return count ? `${count} student${count !== 1 ? 's' : ''}` : 'None yet';
+          },
+        },
       ];
 
   if (loading) return <LoadingSpinner className="min-h-[400px]" />;
