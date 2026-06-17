@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
-import { FiPlus, FiTrash2, FiEye, FiPlay, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEye, FiPlay, FiEdit2, FiBookOpen } from 'react-icons/fi';
 import DataTable from '../../components/ui/DataTable';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CreateQuizModal from '../../components/quizzes/CreateQuizModal';
@@ -132,7 +132,10 @@ export default function QuizzesPage() {
           canManage
             ? openView
             : isStudent
-              ? (row) => navigate(`/student/quizzes/${row._id}`)
+              ? (row) =>
+                  row.hasAttempted
+                    ? navigate(`/student/quizzes/${row._id}/review`)
+                    : navigate(`/student/quizzes/${row._id}`)
               : undefined
         }
         actions={(row) => (
@@ -167,12 +170,25 @@ export default function QuizzesPage() {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/student/quizzes/${row._id}`);
+                  if (row.hasAttempted) {
+                    navigate(`/student/quizzes/${row._id}/review`);
+                  } else {
+                    navigate(`/student/quizzes/${row._id}`);
+                  }
                 }}
-                className="btn-primary py-1.5 text-xs"
+                className={row.hasAttempted ? 'btn-secondary py-1.5 text-xs' : 'btn-primary py-1.5 text-xs'}
               >
-                <FiPlay className="mr-1 inline" />
-                {row.hasAttempted ? 'Retake' : 'Take quiz'}
+                {row.hasAttempted ? (
+                  <>
+                    <FiBookOpen className="mr-1 inline" />
+                    Review
+                  </>
+                ) : (
+                  <>
+                    <FiPlay className="mr-1 inline" />
+                    Take quiz
+                  </>
+                )}
               </button>
             )}
           </div>

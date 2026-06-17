@@ -210,6 +210,28 @@ export const startQuiz = catchAsync(async (req, res) => {
 
   const existingAttempt = quiz.attempts?.find((a) => a.student.toString() === student._id.toString());
 
+  if (existingAttempt) {
+    return res.json({
+      success: true,
+      data: {
+        quizId: quiz._id,
+        title: quiz.title,
+        description: quiz.description,
+        timer: quiz.timer,
+        marks: quiz.marks,
+        totalQuestions: quiz.questions.length,
+        hasAttempted: true,
+        previousAttempt: {
+          score: existingAttempt.score,
+          totalMarks: existingAttempt.totalMarks,
+          percentage: existingAttempt.percentage,
+          completedAt: existingAttempt.completedAt,
+          timeTaken: existingAttempt.timeTaken,
+        },
+      },
+    });
+  }
+
   res.json({
     success: true,
     data: {
@@ -246,6 +268,13 @@ export const submitQuiz = catchAsync(async (req, res) => {
   }
   if (quiz.status !== 'published') throw new AppError('Quiz not available', 400);
 
+  const existingIdx = quiz.attempts.findIndex(
+    (a) => a.student.toString() === student._id.toString()
+  );
+  if (existingIdx >= 0) {
+    throw new AppError('You have already completed this quiz', 400);
+  }
+
   let score = 0;
   let totalMarks = 0;
 
@@ -273,19 +302,68 @@ export const submitQuiz = catchAsync(async (req, res) => {
     completedAt: new Date(),
   };
 
-  const existingIdx = quiz.attempts.findIndex(
-    (a) => a.student.toString() === student._id.toString()
-  );
-  if (existingIdx >= 0) {
-    quiz.attempts[existingIdx] = attempt;
-  } else {
-    quiz.attempts.push(attempt);
-  }
+  quiz.attempts.push(attempt);
   await quiz.save();
 
   res.json({
     success: true,
     data: { score, totalMarks, percentage, attempt },
+  });
+});
+
+export const getQuizReview = catchAsync(async (req, res) => {
+  const quiz = await Quiz.findById(req.params.id);
+  if (!quiz) throw new AppError('Quiz not found', 404);
+
+  const student = await Student.findOne({ user: req.user._id });
+  if (!student) throw new AppError('Student profile not found', 404);
+  if (quiz.class.toString() !== student.class.toString()) {
+    throw new AppError('This quiz is not for your class', 403);
+  }
+
+  const attempt = quiz.attempts?.find((a) => a.student.toString() === student._id.toString());
+  if (!attempt) throw new AppError('You have not completed this quiz yet', 400);
+
+  const answerMap = new Map(
+    (attempt.answers || []).map((a) => [a.questionId.toString(), a.selected])
+  );
+
+  const questions = quiz.questions.map((q) => {
+    const selected = answerMap.get(q._id.toString());
+    const selectedIndex = selected ?? -1;
+    const isCorrect = selectedIndex === q.correctAnswer;
+    let marksAwarded = 0;
+    if (isCorrect) {
+      marksAwarded = q.marks;
+    } else if (quiz.negativeMarking && selectedIndex !== -1) {
+      marksAwarded = -quiz.negativeMarks;
+    }
+
+    return {
+      _id: q._id,
+      question: q.question,
+      options: q.options,
+      marks: q.marks,
+      correctAnswer: q.correctAnswer,
+      selected: selectedIndex,
+      isCorrect,
+      marksAwarded,
+    };
+  });
+
+  res.json({
+    success: true,
+    data: {
+      quizId: quiz._id,
+      title: quiz.title,
+      description: quiz.description,
+      score: attempt.score,
+      totalMarks: attempt.totalMarks,
+      percentage: attempt.percentage,
+      timeTaken: attempt.timeTaken,
+      completedAt: attempt.completedAt,
+      questions,
+    },
   });
 });
 

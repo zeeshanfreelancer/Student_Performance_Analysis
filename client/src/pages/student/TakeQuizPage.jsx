@@ -54,6 +54,10 @@ export default function TakeQuizPage() {
     quizService
       .start(quizId)
       .then(({ data }) => {
+        if (data.data.hasAttempted) {
+          navigate(`/student/quizzes/${quizId}/review`, { replace: true });
+          return;
+        }
         setQuiz(data.data);
         setPhase('intro');
       })
@@ -107,9 +111,14 @@ export default function TakeQuizPage() {
             {result.score} / {result.totalMarks}
           </div>
           <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">{result.percentage}%</p>
-          <Link to="/student/quizzes" className="btn-primary mt-8 inline-block">
-            Back to quizzes
-          </Link>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link to={`/student/quizzes/${quizId}/review`} className="btn-primary">
+              Review answers
+            </Link>
+            <Link to="/student/quizzes" className="btn-secondary">
+              Back to quizzes
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -139,15 +148,8 @@ export default function TakeQuizPage() {
             <li>Total marks: {quiz.marks}</li>
           </ul>
 
-          {quiz.hasAttempted && quiz.previousAttempt && (
-            <div className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
-              Previous attempt: {quiz.previousAttempt.score}/{quiz.previousAttempt.totalMarks}{' '}
-              ({quiz.previousAttempt.percentage}%). Starting again will replace that score.
-            </div>
-          )}
-
           <button type="button" onClick={startAttempt} className="btn-primary mt-8 w-full sm:w-auto">
-            {quiz.hasAttempted ? 'Retake quiz' : 'Start quiz'}
+            Start quiz
           </button>
         </div>
       </div>

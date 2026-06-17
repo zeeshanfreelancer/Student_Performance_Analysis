@@ -10,6 +10,7 @@ router.get('/', quizController.getQuizzes);
 router.post('/', restrictTo('teacher'), quizController.createQuiz);
 router.get('/:id/leaderboard', quizController.getLeaderboard);
 router.get('/:id/start', restrictTo('student'), quizController.startQuiz);
+router.get('/:id/review', restrictTo('student'), quizController.getQuizReview);
 router.post('/:id/submit', restrictTo('student'), quizController.submitQuiz);
 router.get('/:id', quizController.getQuiz);
 router.patch('/:id', restrictTo('teacher'), quizController.updateQuiz);
