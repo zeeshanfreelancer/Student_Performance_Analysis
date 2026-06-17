@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
-import { FiPlus, FiTrash2, FiEye, FiPlay } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiEye, FiPlay, FiEdit2 } from 'react-icons/fi';
 import DataTable from '../../components/ui/DataTable';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CreateQuizModal from '../../components/quizzes/CreateQuizModal';
@@ -32,6 +32,7 @@ export default function QuizzesPage() {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [viewId, setViewId] = useState(null);
 
@@ -89,6 +90,15 @@ export default function QuizzesPage() {
     setViewOpen(true);
   };
 
+  const openEdit = (row) => {
+    setEditId(row._id);
+  };
+
+  const closeForm = () => {
+    setCreateOpen(false);
+    setEditId(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -131,6 +141,13 @@ export default function QuizzesPage() {
               <>
                 <button
                   type="button"
+                  onClick={(e) => { e.stopPropagation(); openEdit(row); }}
+                  className="btn-secondary py-1.5 text-xs"
+                >
+                  <FiEdit2 className="mr-1 inline" /> Edit
+                </button>
+                <button
+                  type="button"
                   onClick={(e) => { e.stopPropagation(); openView(row); }}
                   className="btn-secondary py-1.5 text-xs"
                 >
@@ -163,8 +180,9 @@ export default function QuizzesPage() {
       />
 
       <CreateQuizModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        open={createOpen || !!editId}
+        editId={editId}
+        onClose={closeForm}
         onSuccess={load}
       />
 

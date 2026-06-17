@@ -342,14 +342,33 @@ export const updateQuiz = catchAsync(async (req, res) => {
     throw new AppError('You can only edit your own quizzes', 403);
   }
 
-  if (req.body.questions) validateQuestions(req.body.questions);
+  const updates = { ...req.body };
+  delete updates.teacher;
+  delete updates.attempts;
 
-  const updated = await Quiz.findByIdAndUpdate(req.params.id, req.body, {
+  if (updates.questions) {
+    validateQuestions(updates.questions);
+    const cleanedQuestions = updates.questions.map((q) => ({
+      question: q.question.trim(),
+      options: q.options.map((o) => o.trim()).filter(Boolean),
+      correctAnswer: Number(q.correctAnswer),
+      marks: Number(q.marks) || 1,
+      category: q.category || 'general',
+    }));
+    updates.questions = cleanedQuestions;
+    updates.marks = cleanedQuestions.reduce((sum, q) => sum + q.marks, 0);
+  }
+
+  if (updates.title) updates.title = updates.title.trim();
+
+  const updated = await Quiz.findByIdAndUpdate(req.params.id, updates, {
     new: true,
     runValidators: true,
   })
     .populate('class', 'name section')
     .populate('subject', 'name code');
+
+  await logActivity(req.user._id, 'UPDATE_QUIZ', { resource: 'Quiz', resourceId: quiz._id });
 
   res.json({ success: true, data: { quiz: updated } });
 });
