@@ -41,6 +41,7 @@ export default function CreateQuizModal({ open, onClose, onSuccess, editId = nul
     },
   });
   const [classes, setClasses] = useState([]);
+  const [allTeacherSubjects, setAllTeacherSubjects] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [questions, setQuestions] = useState([emptyQuestion()]);
@@ -54,10 +55,14 @@ export default function CreateQuizModal({ open, onClose, onSuccess, editId = nul
     if (!open) return;
 
     if (isTeacher) {
+      classService
+        .getAll()
+        .then(({ data }) => setClasses(data.data.classes || []))
+        .catch(() => setClasses([]));
       subjectService
         .getAll()
-        .then(({ data }) => setSubjects(data.data.subjects || []))
-        .catch(() => setSubjects([]));
+        .then(({ data }) => setAllTeacherSubjects(data.data.subjects || []))
+        .catch(() => setAllTeacherSubjects([]));
     } else {
       classService.getAll().then(({ data }) => setClasses(data.data.classes)).catch(() => {});
       if (isAdmin) {
@@ -102,20 +107,19 @@ export default function CreateQuizModal({ open, onClose, onSuccess, editId = nul
   }, [open, isAdmin, isTeacher, isEdit, editId, reset]);
 
   useEffect(() => {
-    if (isTeacher || !selectedClass) {
-      if (!isTeacher) setSubjects([]);
+    if (!selectedClass) {
+      setSubjects([]);
+      return;
+    }
+    if (isTeacher) {
+      const classSubjects = allTeacherSubjects.filter(
+        (s) => (s.class?._id || s.class)?.toString() === selectedClass.toString()
+      );
+      setSubjects(classSubjects);
       return;
     }
     subjectService.getAll({ class: selectedClass }).then(({ data }) => setSubjects(data.data.subjects)).catch(() => setSubjects([]));
-  }, [selectedClass, isTeacher]);
-
-  useEffect(() => {
-    if (!isTeacher || !selectedSubject) return;
-    const subject = subjects.find((s) => s._id === selectedSubject);
-    if (subject?.class?._id) {
-      setValue('class', subject.class._id);
-    }
-  }, [selectedSubject, subjects, isTeacher, setValue]);
+  }, [selectedClass, isTeacher, allTeacherSubjects]);
 
   if (!open) return null;
 
@@ -143,10 +147,9 @@ export default function CreateQuizModal({ open, onClose, onSuccess, editId = nul
     setQuestions((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const subjectLabel = (s) => {
-    const cls = s.class ? `${s.class.name} ${s.class.section || ''}`.trim() : '';
-    return cls ? `${s.name} (${cls})` : s.name;
-  };
+  const subjectLabel = (s) => s.name;
+
+  const classLabel = (c) => `${c.name} ${c.section || ''} (${c.academicYear})`.trim();
 
   const buildPayload = (formData) => {
     const cleaned = questions.map((q) => ({
@@ -245,19 +248,43 @@ export default function CreateQuizModal({ open, onClose, onSuccess, editId = nul
               </div>
 
               {isTeacher ? (
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Subject</label>
-                  <select className="input-field" {...register('subject', { required: 'Subject is required' })}>
-                    <option value="">Select your subject</option>
-                    {subjects.map((s) => (
-                      <option key={s._id} value={s._id}>{subjectLabel(s)}</option>
-                    ))}
-                  </select>
-                  {errors.subject && <p className="mt-1 text-sm text-red-500">{errors.subject.message}</p>}
-                  {!subjects.length && (
-                    <p className="mt-1 text-xs text-amber-600">No subjects assigned yet. Ask admin to assign subjects to you.</p>
-                  )}
-                  <input type="hidden" {...register('class', { required: true })} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Assign to class</label>
+                    <select
+                      className="input-field"
+                      {...register('class', {
+                        required: 'Class is required',
+                        onChange: () => setValue('subject', ''),
+                      })}
+                    >
+                      <option value="">Select class</option>
+                      {classes.map((c) => (
+                        <option key={c._id} value={c._id}>{classLabel(c)}</option>
+                      ))}
+                    </select>
+                    {errors.class && <p className="mt-1 text-sm text-red-500">{errors.class.message}</p>}
+                    {!classes.length && (
+                      <p className="mt-1 text-xs text-amber-600">No classes assigned yet. Ask admin to assign subjects to you.</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Subject</label>
+                    <select
+                      className="input-field"
+                      disabled={!selectedClass}
+                      {...register('subject', { required: 'Subject is required' })}
+                    >
+                      <option value="">{selectedClass ? 'Select subject' : 'Select class first'}</option>
+                      {subjects.map((s) => (
+                        <option key={s._id} value={s._id}>{subjectLabel(s)}</option>
+                      ))}
+                    </select>
+                    {errors.subject && <p className="mt-1 text-sm text-red-500">{errors.subject.message}</p>}
+                    {selectedClass && !subjects.length && (
+                      <p className="mt-1 text-xs text-amber-600">No subjects assigned for this class.</p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
