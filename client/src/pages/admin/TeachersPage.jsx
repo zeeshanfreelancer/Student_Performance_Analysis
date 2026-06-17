@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { FiPlus } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import DataTable from '../../components/ui/DataTable';
-import CreateAccountModal from '../../components/accounts/CreateAccountModal';
+import CreateTeacherModal from '../../components/accounts/CreateTeacherModal';
 import { teacherService } from '../../services/teacherService';
 import { TEACHER_STATUS } from '../../utils/constants';
 
@@ -91,11 +91,10 @@ export default function TeachersPage() {
 
       <DataTable columns={columns} data={teachers} loading={loading} emptyTitle="No teachers yet" />
 
-      <CreateAccountModal
+      <CreateTeacherModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSuccess={load}
-        defaultRole="teacher"
       />
     </div>
   );
