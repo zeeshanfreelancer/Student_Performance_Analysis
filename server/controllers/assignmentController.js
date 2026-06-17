@@ -84,7 +84,15 @@ export const getAssignments = catchAsync(async (req, res) => {
     .populate('subject', 'name code')
     .sort('-createdAt');
 
-  res.json({ success: true, data: { assignments } });
+  const withMeta = assignments.map((a) => {
+    const doc = a.toObject();
+    if (req.user.role === 'teacher' || req.user.role === 'admin') {
+      doc.submissionCount = a.submissions?.length || 0;
+    }
+    return doc;
+  });
+
+  res.json({ success: true, data: { assignments: withMeta } });
 });
 
 export const getAssignment = catchAsync(async (req, res) => {
@@ -114,7 +122,21 @@ export const getAssignment = catchAsync(async (req, res) => {
     }
   }
 
-  res.json({ success: true, data: { assignment } });
+  let classStudentCount = null;
+  if (req.user.role === 'teacher' || req.user.role === 'admin') {
+    classStudentCount = await Student.countDocuments({
+      class: assignment.class._id,
+      status: 'active',
+    });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      assignment,
+      classStudentCount,
+    },
+  });
 });
 
 export const updateAssignment = catchAsync(async (req, res) => {

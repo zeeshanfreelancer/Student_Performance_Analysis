@@ -90,7 +90,10 @@ export default function AssignmentsPage() {
         {
           key: 'submissions',
           label: 'Submissions',
-          render: (r) => `${r.submissions?.length || 0}`,
+          render: (r) => {
+            const count = r.submissionCount ?? r.submissions?.length ?? 0;
+            return count ? `${count} student${count !== 1 ? 's' : ''}` : 'None yet';
+          },
         },
       ];
 
