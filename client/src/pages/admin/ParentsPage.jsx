@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { FiPlus, FiUsers } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import DataTable from '../../components/ui/DataTable';
-import CreateAccountModal from '../../components/accounts/CreateAccountModal';
+import CreateParentModal from '../../components/accounts/CreateParentModal';
 import EditParentModal from '../../components/accounts/EditParentModal';
 import { parentService } from '../../services/parentService';
 
@@ -79,11 +79,10 @@ export default function ParentsPage() {
 
       <DataTable columns={columns} data={parents} loading={loading} emptyTitle="No parents yet" />
 
-      <CreateAccountModal
+      <CreateParentModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSuccess={load}
-        defaultRole="parent"
       />
 
       <EditParentModal

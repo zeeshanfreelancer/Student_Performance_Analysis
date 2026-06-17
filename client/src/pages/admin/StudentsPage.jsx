@@ -6,7 +6,7 @@ import DataTable from '../../components/ui/DataTable';
 import Pagination from '../../components/ui/Pagination';
 import CreateStudentModal from '../../components/accounts/CreateStudentModal';
 import EditStudentModal from '../../components/accounts/EditStudentModal';
-import CreateAccountModal from '../../components/accounts/CreateAccountModal';
+import CreateParentModal from '../../components/accounts/CreateParentModal';
 import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -258,10 +258,9 @@ export default function StudentsPage() {
         onClose={() => { setEditModalOpen(false); setSelectedStudent(null); }}
         onSuccess={fetchStudents}
       />
-      <CreateAccountModal
+      <CreateParentModal
         open={parentModalOpen}
         onClose={() => setParentModalOpen(false)}
-        defaultRole="parent"
         onSuccess={fetchStudents}
       />
     </div>

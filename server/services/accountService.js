@@ -73,8 +73,14 @@ export const createParentProfile = async (userId, profile = {}) => {
   const parent = await Parent.create({
     user: userId,
     occupation: profile.occupation || '',
+    workplace: profile.workplace || '',
     relation: profile.relation || 'guardian',
-    emergencyContact: profile.emergencyContact || '',
+    dob: profile.dob || undefined,
+    address: profile.address || '',
+    bloodGroup: profile.bloodGroup || '',
+    alternatePhone: profile.alternatePhone || '',
+    spouseName: profile.spouseName || '',
+    emergencyContact: profile.emergencyContact,
     children: profile.children || [],
     status: 'active',
   });
