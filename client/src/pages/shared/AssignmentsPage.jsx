@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
-import { FiPlus, FiUpload, FiTrash2, FiEye } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiTrash2, FiEye, FiEdit2 } from 'react-icons/fi';
 import DataTable from '../../components/ui/DataTable';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CreateAssignmentModal from '../../components/assignments/CreateAssignmentModal';
@@ -37,6 +37,7 @@ export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -67,6 +68,15 @@ export default function AssignmentsPage() {
   const openSubmit = (row) => {
     setSelected(row);
     setSubmitOpen(true);
+  };
+
+  const openEdit = (row) => {
+    setEditId(row._id);
+  };
+
+  const closeForm = () => {
+    setCreateOpen(false);
+    setEditId(null);
   };
 
   const openView = (row) => {
@@ -147,22 +157,33 @@ export default function AssignmentsPage() {
               </button>
             )}
             {canCreate && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }}
-                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/20"
-                title="Delete"
-              >
-                <FiTrash2 />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openEdit(row); }}
+                  className="btn-secondary py-1.5 text-xs"
+                  title="Edit assignment"
+                >
+                  <FiEdit2 className="mr-1 inline" /> Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(row._id); }}
+                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/20"
+                  title="Delete"
+                >
+                  <FiTrash2 />
+                </button>
+              </>
             )}
           </div>
         )}
       />
 
       <CreateAssignmentModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        open={createOpen || !!editId}
+        editId={editId}
+        onClose={closeForm}
         onSuccess={load}
       />
 

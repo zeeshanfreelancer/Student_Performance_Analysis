@@ -10,7 +10,7 @@ router.get('/my', restrictTo('student'), assignmentController.getStudentAssignme
 router.get('/', assignmentController.getAssignments);
 router.post('/', restrictTo('teacher'), upload.array('attachments', 5), assignmentController.createAssignment);
 router.get('/:id', assignmentController.getAssignment);
-router.patch('/:id', restrictTo('teacher'), assignmentController.updateAssignment);
+router.patch('/:id', restrictTo('teacher'), upload.array('attachments', 5), assignmentController.updateAssignment);
 router.delete('/:id', restrictTo('teacher'), assignmentController.deleteAssignment);
 router.post('/:id/submit', restrictTo('student'), upload.array('files', 5), assignmentController.submitAssignment);
 

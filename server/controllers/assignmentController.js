@@ -151,12 +151,52 @@ export const updateAssignment = catchAsync(async (req, res) => {
     throw new AppError('You can only edit your own assignments', 403);
   }
 
-  const updated = await Assignment.findByIdAndUpdate(req.params.id, req.body, {
+  const updates = {};
+  const { title, description, deadline, class: classId, subject, maxMarks, status } = req.body;
+
+  if (title != null) updates.title = title.trim();
+  if (description !== undefined) updates.description = description;
+  if (deadline) updates.deadline = new Date(deadline);
+  if (maxMarks != null) updates.maxMarks = Number(maxMarks);
+  if (status) updates.status = status;
+
+  if (classId) {
+    const classIds = (teacher.classes || []).map((id) => id.toString());
+    if (classIds.length && !classIds.includes(classId.toString())) {
+      throw new AppError('You can only assign to your classes', 403);
+    }
+    updates.class = classId;
+  }
+
+  if (subject !== undefined) {
+    updates.subject = subject || undefined;
+  }
+
+  if (req.files?.length) {
+    const newAttachments = [];
+    for (const file of req.files) {
+      const result = await uploadToCloudinary(file.buffer, 'assignments');
+      newAttachments.push({
+        url: result.secure_url,
+        publicId: result.public_id,
+        name: file.originalname,
+      });
+    }
+    updates.attachments = [...(assignment.attachments || []), ...newAttachments];
+  }
+
+  const updated = await Assignment.findByIdAndUpdate(req.params.id, updates, {
     new: true,
     runValidators: true,
   })
     .populate('class', 'name section')
-    .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } });
+    .populate({ path: 'teacher', populate: { path: 'user', select: 'name' } })
+    .populate('subject', 'name code');
+
+  await logActivity(req.user._id, 'UPDATE_ASSIGNMENT', {
+    resource: 'Assignment',
+    resourceId: assignment._id,
+  });
 
   res.json({ success: true, data: { assignment: updated } });
 });
