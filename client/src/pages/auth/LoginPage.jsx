@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
@@ -7,26 +7,31 @@ import { getDashboardPath } from '../../utils/constants';
 import { getErrorMessage } from '../../utils/helpers';
 
 export default function LoginPage() {
-  const { login, loading } = useAuth();
+  const { login, loading, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [rememberMe, setRememberMe] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm();
 
+  useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      navigate(getDashboardPath(user.role), { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
+
   const onSubmit = async (data) => {
     try {
-      const result = await login({
+      const loggedInUser = await login({
         ...data,
         email: data.email.trim().toLowerCase(),
         rememberMe,
-      });
-      if (result.meta.requestStatus === 'fulfilled') {
-        toast.success('Welcome back!');
-        navigate(getDashboardPath(result.payload.role));
-      } else {
-        toast.error(result.payload || 'Login failed');
+      }).unwrap();
+      toast.success('Welcome back!');
+      const role = loggedInUser?.role || JSON.parse(localStorage.getItem('user') || '{}')?.role;
+      if (role) {
+        navigate(getDashboardPath(role), { replace: true });
       }
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      toast.error(typeof err === 'string' ? err : getErrorMessage(err));
     }
   };
 

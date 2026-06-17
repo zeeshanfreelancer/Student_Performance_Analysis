@@ -15,11 +15,12 @@ function AppInitializer({ children }) {
   const token = localStorage.getItem('accessToken');
 
   useEffect(() => {
-    if (token) {
+    const storedToken = localStorage.getItem('accessToken');
+    if (storedToken) {
       dispatch(fetchMe());
-      connectSocket(token);
+      connectSocket(storedToken);
     }
-  }, [dispatch, token]);
+  }, [dispatch]);
 
   if (token && !isAuthenticated && loading) {
     return <LoadingSpinner className="min-h-screen" />;

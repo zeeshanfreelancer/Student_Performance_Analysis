@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import Teacher from '../models/Teacher.js';
+import Parent from '../models/Parent.js';
 import User from '../models/User.js';
 import Student from '../models/Student.js';
 import { AppError } from '../utils/AppError.js';
@@ -69,6 +71,32 @@ export const login = catchAsync(async (req, res) => {
         inactive: 'Student account is inactive',
       };
       throw new AppError(messages[studentProfile.status] || 'Student account is not active', 403);
+    }
+  }
+
+  if (user.role === 'teacher') {
+    const teacherProfile = await Teacher.findOne({ user: user._id });
+    if (!teacherProfile) {
+      throw new AppError(
+        'Teacher profile is missing for this account. Ask an administrator to recreate your teacher record.',
+        403
+      );
+    }
+    if (teacherProfile.status === 'left') {
+      throw new AppError('This teacher account is no longer active.', 403);
+    }
+  }
+
+  if (user.role === 'parent') {
+    const parentProfile = await Parent.findOne({ user: user._id });
+    if (!parentProfile) {
+      throw new AppError(
+        'Parent profile is missing for this account. Ask an administrator to recreate your parent record.',
+        403
+      );
+    }
+    if (parentProfile.status === 'inactive') {
+      throw new AppError('This parent account is inactive.', 403);
     }
   }
 
