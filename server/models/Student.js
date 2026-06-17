@@ -9,6 +9,17 @@ const emergencyContactSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const previousEducationSchema = new mongoose.Schema(
+  {
+    schoolName: { type: String, default: '' },
+    classOrGrade: { type: String, default: '' },
+    board: { type: String, default: '' },
+    passingYear: { type: String, default: '' },
+    percentage: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
 const studentSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
@@ -24,6 +35,7 @@ const studentSchema = new mongoose.Schema(
     bloodGroup: { type: String, default: '' },
     profileImage: { type: String, default: '' },
     emergencyContact: emergencyContactSchema,
+    previousEducation: previousEducationSchema,
     attendancePercentage: { type: Number, default: 0, min: 0, max: 100 },
     gpa: { type: Number, default: 0, min: 0, max: 4 },
     enrollmentDate: { type: Date, default: Date.now },

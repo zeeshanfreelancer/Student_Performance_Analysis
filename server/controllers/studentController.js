@@ -24,7 +24,7 @@ export const createStudent = catchAsync(async (req, res) => {
   let {
     name, email, password, rollNo, class: classId, department, semester,
     fatherName, motherName, parentId, dob, address, bloodGroup, phone, gender,
-    emergencyContact,
+    emergencyContact, previousEducation,
   } = req.body;
 
   if (!name?.trim()) throw new AppError('Name is required', 400);
@@ -91,6 +91,7 @@ export const createStudent = catchAsync(async (req, res) => {
       bloodGroup: bloodGroup || '',
       profileImage,
       emergencyContact,
+      previousEducation,
       status: 'active',
       academicTimeline: [{ title: 'Enrolled', description: 'Student enrolled', type: 'enrollment' }],
       enrollmentDate: new Date(),
