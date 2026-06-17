@@ -289,10 +289,29 @@ export const updateStudent = catchAsync(async (req, res) => {
   delete updates.parentId;
 
   if (req.user.role === 'teacher') {
-    updates = { class: updates.class };
-    if (!updates.class) {
-      throw new AppError('Class is required', 400);
+    const teacherAllowed = [
+      'rollNo', 'class', 'semester', 'fatherName', 'motherName', 'dob', 'address',
+      'bloodGroup', 'emergencyContact', 'previousEducation',
+    ];
+    updates = {};
+    teacherAllowed.forEach((key) => {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    });
+    if (updates.rollNo) {
+      updates.rollNo = updates.rollNo.trim().toUpperCase();
+      const rollExists = await Student.findOne({
+        rollNo: updates.rollNo,
+        _id: { $ne: existing._id },
+      });
+      if (rollExists) throw new AppError('Roll number already exists', 400);
     }
+  } else if (updates.rollNo) {
+    updates.rollNo = updates.rollNo.trim().toUpperCase();
+    const rollExists = await Student.findOne({
+      rollNo: updates.rollNo,
+      _id: { $ne: existing._id },
+    });
+    if (rollExists) throw new AppError('Roll number already exists', 400);
   }
 
   if (req.file) {
@@ -333,10 +352,11 @@ export const updateStudent = catchAsync(async (req, res) => {
     await linkStudentToParent(student._id, parentIdUpdate || null);
   }
 
-  if (req.body.name || req.body.phone) {
+  if (req.body.name || req.body.phone || req.body.gender !== undefined) {
     await User.findByIdAndUpdate(student.user._id || student.user, {
       ...(req.body.name && { name: req.body.name }),
-      ...(req.body.phone && { phone: req.body.phone }),
+      ...(req.body.phone !== undefined && { phone: req.body.phone }),
+      ...(req.body.gender !== undefined && { gender: req.body.gender }),
     });
   }
 

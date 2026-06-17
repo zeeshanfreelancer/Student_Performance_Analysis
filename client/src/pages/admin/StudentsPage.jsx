@@ -26,7 +26,7 @@ export default function StudentsPage() {
   const [filters, setFilters] = useState({});
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [editStudentId, setEditStudentId] = useState(null);
   const [parentModalOpen, setParentModalOpen] = useState(false);
   const [classOptions, setClassOptions] = useState([]);
   const debouncedSearch = useDebounce(search);
@@ -70,7 +70,7 @@ export default function StudentsPage() {
   };
 
   const openEdit = (row) => {
-    setSelectedStudent(row);
+    setEditStudentId(row._id);
     setEditModalOpen(true);
   };
 
@@ -228,16 +228,16 @@ export default function StudentsPage() {
           loading={loading}
           emptyTitle="No students found"
           actions={
-            isTeacher
+            (isTeacher || user?.role === 'admin')
               ? (row) => (
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); openEdit(row); }}
-                      className="p-1 hover:text-primary-600"
-                      title="Change class"
+                      className="btn-secondary py-1.5 text-xs"
+                      title="Edit student"
                     >
-                      <FiEdit />
+                      <FiEdit className="mr-1 inline" /> Edit
                     </button>
                   </div>
                 )
@@ -254,8 +254,8 @@ export default function StudentsPage() {
       />
       <EditStudentModal
         open={editModalOpen}
-        student={selectedStudent}
-        onClose={() => { setEditModalOpen(false); setSelectedStudent(null); }}
+        studentId={editStudentId}
+        onClose={() => { setEditModalOpen(false); setEditStudentId(null); }}
         onSuccess={fetchStudents}
       />
       <CreateParentModal

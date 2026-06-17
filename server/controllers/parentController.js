@@ -1,4 +1,5 @@
 import Parent from '../models/Parent.js';
+import User from '../models/User.js';
 import Student from '../models/Student.js';
 import Attendance from '../models/Attendance.js';
 import Result from '../models/Result.js';
@@ -35,6 +36,45 @@ export const getParentById = catchAsync(async (req, res) => {
   const parent = await Parent.findById(req.params.id).populate(parentListPopulate);
   if (!parent) throw new AppError('Parent not found', 404);
   res.json({ success: true, data: { parent } });
+});
+
+/** Admin: update parent profile */
+export const updateParent = catchAsync(async (req, res) => {
+  const parent = await Parent.findById(req.params.id);
+  if (!parent) throw new AppError('Parent not found', 404);
+
+  const {
+    name, phone, gender, relation, occupation, workplace, dob, address,
+    bloodGroup, alternatePhone, spouseName, emergencyContact,
+  } = req.body;
+
+  const profileFields = {
+    relation, occupation, workplace, dob, address, bloodGroup,
+    alternatePhone, spouseName, emergencyContact,
+  };
+  Object.entries(profileFields).forEach(([key, value]) => {
+    if (value !== undefined) parent[key] = value;
+  });
+  if (dob) parent.dob = new Date(dob);
+
+  await parent.save();
+
+  if (name || phone !== undefined || gender !== undefined) {
+    await User.findByIdAndUpdate(parent.user, {
+      ...(name && { name: name.trim() }),
+      ...(phone !== undefined && { phone }),
+      ...(gender !== undefined && { gender }),
+    });
+  }
+
+  const updated = await Parent.findById(parent._id).populate(parentListPopulate);
+
+  await logActivity(req.user._id, 'UPDATE_PARENT', {
+    resource: 'Parent',
+    resourceId: parent._id,
+  });
+
+  res.json({ success: true, data: { parent: updated } });
 });
 
 /** Admin / teacher: assign or update linked students */

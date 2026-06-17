@@ -8,6 +8,7 @@ router.use(protect, restrictTo('admin', 'teacher'));
 
 router.get('/', parentController.listParents);
 router.get('/:id', parentController.getParentById);
+router.patch('/:id', restrictTo('admin'), parentController.updateParent);
 router.patch('/:id/children', parentController.updateParentChildren);
 
 export default router;

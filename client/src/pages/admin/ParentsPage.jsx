@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FiPlus, FiUsers } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiEdit2, FiLink } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import DataTable from '../../components/ui/DataTable';
 import CreateParentModal from '../../components/accounts/CreateParentModal';
@@ -10,7 +10,8 @@ export default function ParentsPage() {
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
-  const [editParent, setEditParent] = useState(null);
+  const [editParentId, setEditParentId] = useState(null);
+  const [linkParentId, setLinkParentId] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -50,13 +51,22 @@ export default function ParentsPage() {
       key: 'actions',
       label: 'Actions',
       render: (r) => (
-        <button
-          type="button"
-          onClick={() => setEditParent(r)}
-          className="text-sm text-primary-600 hover:underline dark:text-primary-400"
-        >
-          Link students
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setEditParentId(r._id)}
+            className="btn-secondary py-1.5 text-xs"
+          >
+            <FiEdit2 className="mr-1 inline" /> Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setLinkParentId(r._id)}
+            className="btn-secondary py-1.5 text-xs"
+          >
+            <FiLink className="mr-1 inline" /> Link
+          </button>
+        </div>
       ),
     },
   ];
@@ -86,9 +96,17 @@ export default function ParentsPage() {
       />
 
       <EditParentModal
-        open={!!editParent}
-        parent={editParent}
-        onClose={() => setEditParent(null)}
+        open={!!editParentId}
+        parentId={editParentId}
+        onClose={() => setEditParentId(null)}
+        onSuccess={load}
+      />
+
+      <EditParentModal
+        open={!!linkParentId}
+        parentId={linkParentId}
+        mode="links"
+        onClose={() => setLinkParentId(null)}
         onSuccess={load}
       />
     </div>

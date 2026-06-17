@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { FiPlus } from 'react-icons/fi';
+import { FiPlus, FiEdit2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import DataTable from '../../components/ui/DataTable';
 import CreateTeacherModal from '../../components/accounts/CreateTeacherModal';
+import EditTeacherModal from '../../components/accounts/EditTeacherModal';
 import { teacherService } from '../../services/teacherService';
 import { TEACHER_STATUS } from '../../utils/constants';
 
@@ -11,6 +12,7 @@ export default function TeachersPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -89,11 +91,32 @@ export default function TeachersPage() {
         </button>
       </div>
 
-      <DataTable columns={columns} data={teachers} loading={loading} emptyTitle="No teachers yet" />
+      <DataTable
+        columns={columns}
+        data={teachers}
+        loading={loading}
+        emptyTitle="No teachers yet"
+        actions={(row) => (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setEditId(row._id); }}
+            className="btn-secondary py-1.5 text-xs"
+          >
+            <FiEdit2 className="mr-1 inline" /> Edit
+          </button>
+        )}
+      />
 
       <CreateTeacherModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        onSuccess={load}
+      />
+
+      <EditTeacherModal
+        open={!!editId}
+        teacherId={editId}
+        onClose={() => setEditId(null)}
         onSuccess={load}
       />
     </div>

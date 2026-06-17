@@ -8,5 +8,6 @@ export const parentService = {
   /** Admin / teacher: manage parent–student links */
   getAll: () => api.get('/parents'),
   getById: (id) => api.get(`/parents/${id}`),
+  update: (id, data) => api.patch(`/parents/${id}`, data),
   updateChildren: (id, children) => api.patch(`/parents/${id}/children`, { children }),
 };
