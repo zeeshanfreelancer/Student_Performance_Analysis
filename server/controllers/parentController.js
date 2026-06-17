@@ -10,6 +10,7 @@ import { getMonthlyAttendanceStats } from '../services/attendanceService.js';
 import { getSubjectWiseMarks } from '../services/analyticsService.js';
 import { syncParentChildren, getLinkedChildrenForUser, assertParentOwnsStudent } from '../services/parentLinkService.js';
 import { logActivity } from '../services/activityLogService.js';
+import { updateUserCredentials } from '../services/accountService.js';
 
 const parentListPopulate = [
   { path: 'user', select: 'name email phone status' },
@@ -44,7 +45,7 @@ export const updateParent = catchAsync(async (req, res) => {
   if (!parent) throw new AppError('Parent not found', 404);
 
   const {
-    name, phone, gender, relation, occupation, workplace, dob, address,
+    name, phone, gender, email, password, relation, occupation, workplace, dob, address,
     bloodGroup, alternatePhone, spouseName, emergencyContact,
   } = req.body;
 
@@ -65,6 +66,10 @@ export const updateParent = catchAsync(async (req, res) => {
       ...(phone !== undefined && { phone }),
       ...(gender !== undefined && { gender }),
     });
+  }
+
+  if (email !== undefined || password) {
+    await updateUserCredentials(parent.user, { email, password });
   }
 
   const updated = await Parent.findById(parent._id).populate(parentListPopulate);

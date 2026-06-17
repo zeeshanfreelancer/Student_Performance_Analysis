@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { FiX } from 'react-icons/fi';
 import { teacherService } from '../../services/teacherService';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import AccountCredentialsFields from './AccountCredentialsFields';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -21,7 +22,6 @@ export default function EditTeacherModal({ open, teacherId, onClose, onSuccess }
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const [email, setEmail] = useState('');
 
   useEffect(() => {
     if (!open || !teacherId) return;
@@ -30,9 +30,10 @@ export default function EditTeacherModal({ open, teacherId, onClose, onSuccess }
       .getById(teacherId)
       .then(({ data }) => {
         const t = data.data.teacher;
-        setEmail(t.user?.email || '');
         reset({
           name: t.user?.name || '',
+          email: t.user?.email || '',
+          password: '',
           phone: t.user?.phone || '',
           gender: t.user?.gender || '',
           employeeId: t.employeeId || '',
@@ -64,6 +65,8 @@ export default function EditTeacherModal({ open, teacherId, onClose, onSuccess }
     try {
       await teacherService.update(teacherId, {
         name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        ...(formData.password ? { password: formData.password } : {}),
         phone: formData.phone || '',
         gender: formData.gender || '',
         employeeId: formData.employeeId?.trim(),
@@ -120,14 +123,11 @@ export default function EditTeacherModal({ open, teacherId, onClose, onSuccess }
                   <input className="input-field" {...register('name', { required: true })} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Email</label>
-                  <input className="input-field bg-gray-50 dark:bg-gray-800" value={email} readOnly disabled />
-                </div>
-                <div>
                   <label className="mb-1 block text-sm font-medium">Phone</label>
                   <input className="input-field" {...register('phone')} />
                 </div>
               </div>
+              <AccountCredentialsFields register={register} errors={errors} />
             </section>
 
             <section className="space-y-4">

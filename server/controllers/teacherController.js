@@ -4,6 +4,7 @@ import { AppError } from '../utils/AppError.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import { logActivity } from '../services/activityLogService.js';
 import { syncUserStatusFromProfile, TEACHER_STATUSES } from '../services/statusService.js';
+import { updateUserCredentials } from '../services/accountService.js';
 
 const teacherPopulate = [
   { path: 'user', select: 'name email phone status gender address' },
@@ -44,7 +45,7 @@ export const updateTeacher = catchAsync(async (req, res) => {
   if (!teacher) throw new AppError('Teacher not found', 404);
 
   const {
-    name, phone, gender, employeeId, qualification, experience, joiningDate,
+    name, phone, gender, email, password, employeeId, qualification, experience, joiningDate,
     salary, dob, address, bloodGroup, emergencyContact, previousEmployment,
   } = req.body;
 
@@ -68,12 +69,16 @@ export const updateTeacher = catchAsync(async (req, res) => {
 
   await teacher.save();
 
-  if (name || phone || gender !== undefined) {
+  if (name || phone !== undefined || gender !== undefined) {
     await User.findByIdAndUpdate(teacher.user, {
       ...(name && { name: name.trim() }),
       ...(phone !== undefined && { phone }),
       ...(gender !== undefined && { gender }),
     });
+  }
+
+  if (email !== undefined || password) {
+    await updateUserCredentials(teacher.user, { email, password });
   }
 
   const updated = await Teacher.findById(teacher._id).populate(teacherPopulate);

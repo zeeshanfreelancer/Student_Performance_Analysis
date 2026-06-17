@@ -5,6 +5,7 @@ import { FiX } from 'react-icons/fi';
 import { parentService } from '../../services/parentService';
 import { studentService } from '../../services/studentService';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import AccountCredentialsFields from './AccountCredentialsFields';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const toDateInput = (value) => (value ? new Date(value).toISOString().slice(0, 10) : '');
@@ -19,7 +20,6 @@ function SectionTitle({ children }) {
 
 export default function EditParentModal({ open, parentId, onClose, onSuccess, mode = 'full' }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
-  const [email, setEmail] = useState('');
   const [students, setStudents] = useState([]);
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -36,11 +36,12 @@ export default function EditParentModal({ open, parentId, onClose, onSuccess, mo
     ])
       .then(([parentRes, studentsRes]) => {
         const p = parentRes.data.data.parent;
-        setEmail(p.user?.email || '');
         const linked = (p.children || []).map((c) => (c._id || c).toString());
         setSelected(linked);
         reset({
           name: p.user?.name || '',
+          email: p.user?.email || '',
+          password: '',
           phone: p.user?.phone || '',
           gender: p.user?.gender || '',
           relation: p.relation || 'guardian',
@@ -86,6 +87,8 @@ export default function EditParentModal({ open, parentId, onClose, onSuccess, mo
     try {
       await parentService.update(parentId, {
         name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        ...(formData.password ? { password: formData.password } : {}),
         phone: formData.phone || '',
         gender: formData.gender || '',
         relation: formData.relation || 'guardian',
@@ -171,14 +174,11 @@ export default function EditParentModal({ open, parentId, onClose, onSuccess, mo
                     {errors.name && <p className="mt-1 text-sm text-red-500">Required</p>}
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Email</label>
-                    <input className="input-field bg-gray-50 dark:bg-gray-800" value={email} readOnly disabled />
-                  </div>
-                  <div>
                     <label className="mb-1 block text-sm font-medium">Phone</label>
                     <input className="input-field" {...register('phone')} />
                   </div>
                 </div>
+                <AccountCredentialsFields register={register} errors={errors} />
               </section>
 
               <section className="space-y-4">

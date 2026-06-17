@@ -7,6 +7,7 @@ import { studentService } from '../../services/studentService';
 import { classService } from '../../services/classService';
 import { parentService } from '../../services/parentService';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import AccountCredentialsFields from './AccountCredentialsFields';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const toDateInput = (value) => (value ? new Date(value).toISOString().slice(0, 10) : '');
@@ -26,7 +27,6 @@ export default function EditStudentModal({ open, studentId, onClose, onSuccess }
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
   const [classes, setClasses] = useState([]);
   const [parents, setParents] = useState([]);
-  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
 
@@ -41,9 +41,10 @@ export default function EditStudentModal({ open, studentId, onClose, onSuccess }
       .getById(studentId)
       .then(({ data }) => {
         const s = data.data.student;
-        setEmail(s.user?.email || '');
         reset({
           name: s.user?.name || '',
+          email: s.user?.email || '',
+          password: '',
           phone: s.user?.phone || '',
           gender: s.user?.gender || '',
           rollNo: s.rollNo || '',
@@ -101,6 +102,8 @@ export default function EditStudentModal({ open, studentId, onClose, onSuccess }
       if (!isTeacher) {
         Object.assign(payload, {
           name: formData.name,
+          email: formData.email.trim().toLowerCase(),
+          ...(formData.password ? { password: formData.password } : {}),
           phone: formData.phone || '',
           gender: formData.gender || '',
           parentId: formData.parentId || null,
@@ -147,10 +150,6 @@ export default function EditStudentModal({ open, studentId, onClose, onSuccess }
                     <input className="input-field" {...register('name', { required: true })} />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Email</label>
-                    <input className="input-field bg-gray-50 dark:bg-gray-800" value={email} readOnly disabled />
-                  </div>
-                  <div>
                     <label className="mb-1 block text-sm font-medium">Phone</label>
                     <input className="input-field" {...register('phone')} />
                   </div>
@@ -164,6 +163,7 @@ export default function EditStudentModal({ open, studentId, onClose, onSuccess }
                     </select>
                   </div>
                 </div>
+                <AccountCredentialsFields register={register} errors={errors} />
               </section>
             )}
 

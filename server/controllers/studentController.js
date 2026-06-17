@@ -12,7 +12,7 @@ import { APIFeatures } from '../utils/apiFeatures.js';
 import { uploadToCloudinary } from '../services/cloudinaryService.js';
 import { logActivity } from '../services/activityLogService.js';
 import { sendAccountCredentialsEmail } from '../services/emailService.js';
-import { createUserAccount } from '../services/accountService.js';
+import { createUserAccount, updateUserCredentials } from '../services/accountService.js';
 import { getSubjectWiseMarks } from '../services/analyticsService.js';
 import { getStudentEnrollmentStart } from '../services/attendanceService.js';
 import { linkStudentToParent } from '../services/parentLinkService.js';
@@ -282,6 +282,7 @@ export const updateStudent = catchAsync(async (req, res) => {
   }
 
   let updates = { ...req.body };
+  const { email, password } = req.body;
   delete updates.email;
   delete updates.password;
 
@@ -358,6 +359,10 @@ export const updateStudent = catchAsync(async (req, res) => {
       ...(req.body.phone !== undefined && { phone: req.body.phone }),
       ...(req.body.gender !== undefined && { gender: req.body.gender }),
     });
+  }
+
+  if (req.user.role === 'admin' && (email !== undefined || password)) {
+    await updateUserCredentials(student.user._id || student.user, { email, password });
   }
 
   const updated = await Student.findById(student._id)

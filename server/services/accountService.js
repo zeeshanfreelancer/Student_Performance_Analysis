@@ -87,3 +87,27 @@ export const createParentProfile = async (userId, profile = {}) => {
 
   return parent;
 };
+
+export const updateUserCredentials = async (userId, { email, password }) => {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User account not found', 404);
+
+  if (email !== undefined) {
+    const normalizedEmail = email.toLowerCase().trim();
+    if (!normalizedEmail) throw new AppError('Email is required', 400);
+    const exists = await User.findOne({ email: normalizedEmail, _id: { $ne: userId } });
+    if (exists) throw new AppError('Email already registered', 400);
+    user.email = normalizedEmail;
+  }
+
+  if (password) {
+    if (password.length < 6) throw new AppError('Password must be at least 6 characters', 400);
+    user.password = password;
+  }
+
+  if (email !== undefined || password) {
+    await user.save();
+  }
+
+  return user;
+};
