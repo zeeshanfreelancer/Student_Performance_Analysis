@@ -46,15 +46,7 @@ export default function LoginPage() {
           {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
         </div>
         <div>
-          <div className="mb-1 flex items-center justify-between">
-            <label className="text-sm font-medium">Password</label>
-            <Link
-              to="/forgot-password"
-              className="text-sm text-primary-600 hover:underline dark:text-primary-400"
-            >
-              Forgot password?
-            </Link>
-          </div>
+          <label className="mb-1 block text-sm font-medium">Password</label>
           <input
             type="password"
             className="input-field"
@@ -62,10 +54,18 @@ export default function LoginPage() {
           />
           {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>}
         </div>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+            <span className="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
+          </label>
+          <Link
+            to="/forgot-password"
+            className="text-sm text-primary-600 hover:underline dark:text-primary-400"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
